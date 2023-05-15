@@ -1,13 +1,13 @@
 #include "Version.xcconfig"
 SLASH = /
 
-HOST_APP_NAME = Copilot for Xcode Dev
-BUNDLE_IDENTIFIER_BASE = dev.com.intii.CopilotForXcode
+HOST_APP_NAME = Codeium for Xcode Dev
+BUNDLE_IDENTIFIER_BASE = dev.com.intii.CodeiumForXcode
 SPARKLE_FEED_URL = http:$(SLASH)$(SLASH)127.0.0.1:9433/appcast.xml
 SPARKLE_PUBLIC_KEY = WDzm5GHnc6c8kjeJEgX5GuGiPpW6Lc/ovGjLnrrZvPY=
-APPLICATION_SUPPORT_FOLDER = dev.com.intii.CopilotForXcode
-EXTENSION_BUNDLE_NAME = Copilot Dev
-EXTENSION_BUNDLE_DISPLAY_NAME = Copilot Dev
-EXTENSION_SERVICE_NAME = CopilotForXcodeExtensionService
+APPLICATION_SUPPORT_FOLDER = dev.com.intii.CodeiumForXcode
+EXTENSION_BUNDLE_NAME = Codeium Dev
+EXTENSION_BUNDLE_DISPLAY_NAME = Codeium Dev
+EXTENSION_SERVICE_NAME = CodeiumForXcodeExtensionService
 
 // see also target Configs

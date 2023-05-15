@@ -16,27 +16,27 @@ struct FeatureSettingsView: View {
                 image: "lightbulb"
             )
 
-            ScrollView {
-                ChatSettingsView()
-            }
-            .padding()
-            .sidebarItem(
-                tag: 1,
-                title: "Chat",
-                subtitle: "Chat about your code",
-                image: "character.bubble"
-            )
-
-            ScrollView {
-                PromptToCodeSettingsView()
-            }
-            .padding()
-            .sidebarItem(
-                tag: 2,
-                title: "Prompt to Code",
-                subtitle: "Write code with natural language",
-                image: "paintbrush"
-            )
+//            ScrollView {
+//                ChatSettingsView()
+//            }
+//            .padding()
+//            .sidebarItem(
+//                tag: 1,
+//                title: "Chat",
+//                subtitle: "Chat about your code",
+//                image: "character.bubble"
+//            )
+//
+//            ScrollView {
+//                PromptToCodeSettingsView()
+//            }
+//            .padding()
+//            .sidebarItem(
+//                tag: 2,
+//                title: "Prompt to Code",
+//                subtitle: "Write code with natural language",
+//                image: "paintbrush"
+//            )
         }
     }
 }

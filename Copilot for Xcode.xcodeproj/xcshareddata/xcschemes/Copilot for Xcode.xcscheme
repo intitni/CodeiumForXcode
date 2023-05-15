@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "C8189B152938972F00C9DCDA"
-               BuildableName = "Copilot for Xcode.app"
+               BuildableName = "Codeium for Xcode.app"
                BlueprintName = "Copilot for Xcode"
                ReferencedContainer = "container:Copilot for Xcode.xcodeproj">
             </BuildableReference>
@@ -49,7 +49,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "C8189B152938972F00C9DCDA"
-            BuildableName = "Copilot for Xcode.app"
+            BuildableName = "Codeium for Xcode.app"
             BlueprintName = "Copilot for Xcode"
             ReferencedContainer = "container:Copilot for Xcode.xcodeproj">
          </BuildableReference>
@@ -66,7 +66,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "C8189B152938972F00C9DCDA"
-            BuildableName = "Copilot for Xcode.app"
+            BuildableName = "Codeium for Xcode.app"
             BlueprintName = "Copilot for Xcode"
             ReferencedContainer = "container:Copilot for Xcode.xcodeproj">
          </BuildableReference>
@@ -77,6 +77,7 @@
    </AnalyzeAction>
    <ArchiveAction
       buildConfiguration = "Release"
+      customArchiveName = "Codeium for Xcode"
       revealArchiveInOrganizer = "YES">
    </ArchiveAction>
 </Scheme>

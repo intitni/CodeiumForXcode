@@ -36,7 +36,8 @@ public struct TabContainer: View {
                 case .feature:
                     FeatureSettingsView()
                 case .customCommand:
-                    CustomCommandView()
+                    EmptyView()
+//                    CustomCommandView()
                 case .debug:
                     DebugSettingsView()
                 }
@@ -94,12 +95,13 @@ struct TabBar: View {
                         tab: tab
                     )
                 case .customCommand:
-                    TabBarButton(
-                        currentTab: $tab,
-                        title: "Custom Command",
-                        image: "command.square",
-                        tab: tab
-                    )
+//                    TabBarButton(
+//                        currentTab: $tab,
+//                        title: "Custom Command",
+//                        image: "command.square",
+//                        tab: tab
+//                    )
+                    EmptyView()
                 case .debug:
                     TabBarButton(
                         currentTab: $tab,

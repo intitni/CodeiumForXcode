@@ -1,17 +1,14 @@
-# Copilot for Xcode <img alt="Logo" src="/AppIcon.png" align="right" height="50">
+# Codeium for Xcode <img alt="Logo" src="/AppIcon.png" align="right" height="50">
 
-![Screenshot](/Screenshot.png)
+Codeium for Xcode is a fork of [Copilot for Xcode](https://github.com/intitni/CopilotForXcode.git) that exposes the features supported by Codeium.
 
-Copilot for Xcode is an Xcode Source Editor Extension that provides GitHub Copilot, Codeium and ChatGPT support for Xcode. 
+If you have any trouble using the app, please open an issue at [https://github.com/intitni/CopilotForXcode/issues](https://github.com/intitni/CopilotForXcode/issues).
 
 <a href="https://www.buymeacoffee.com/intitni" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
 ## Features
 
-- Code Suggestions (powered by GitHub Copilot and Codeium).
-- Chat (powered by OpenAI ChatGPT).
-- Prompt to Code (powered by OpenAI ChatGPT).
-- Custom Commands to extend Chat and Prompt to Code.
+- Code Suggestions.
 
 ## Table of Contents
 
@@ -20,15 +17,11 @@ Copilot for Xcode is an Xcode Source Editor Extension that provides GitHub Copil
 - [Installation and Setup](#installation-and-setup)
   - [Install](#install)
   - [Enable the Extension](#enable-the-extension)
-  - [Setting Up GitHub Copilot](#setting-up-github-copilot)
   - [Setting Up Codeium](#setting-up-codeium)
-  - [Setting Up OpenAI API Key](#setting-up-openai-api-key)
   - [Granting Permissions to the App](#granting-permissions-to-the-app)
-  - [Managing `CopilotForXcodeExtensionService.app`](#managing-copilotforxcodeextensionserviceapp)
 - [Update](#update)
 - [Feature](#feature)
 - [Key Bindings](#key-bindings)
-- [Prevent Suggestions Being Committed](#prevent-suggestions-being-committed)
 - [Limitations](#limitations)
 - [License](#license)
 
@@ -39,16 +32,7 @@ For development instruction, check [Development.md](DEVELOPMENT.md).
 ## Prerequisites
 
 - Public network connection.
-
-For suggestion features:
-- For GitHub Copilot users: 
-  - [Node](https://nodejs.org/) installed to run the Copilot LSP.
-  - Active GitHub Copilot subscription.
-- For Codeium users:
-  - Active Codeium account.
-
-For chat and prompt to code features:
-- Valid OpenAI API key.  
+- Active Codeium account.
 
 ## Permissions Required
 
@@ -61,13 +45,7 @@ For chat and prompt to code features:
 
 ### Install
 
-You can install it via [Homebrew](http://brew.sh/):
-
-```bash
-brew install --cask copilot-for-xcode
-```
-
-Or install it manually, by downloading the `Copilot for Xcode.app` from the latest [release](https://github.com/intitni/CopilotForXcode/releases), and extract it to the Applications folder.
+You can install it manually, by downloading the `Codeium for Xcode.app` from the latest [release](https://github.com/intitni/CodeiumForXcode/releases), and extract it to the Applications folder.
 
 Open the app, the app will create a launch agent to setup a background running Service that does the real job.
 
@@ -75,19 +53,9 @@ Open the app, the app will create a launch agent to setup a background running S
 
 Enable the extension in `System Settings.app`. 
 
-From the Apple menu located in the top-left corner of your screen click `System Settings`. Navigate to `Privacy & Security` then toward the bottom click `Extensions`. Click `Xcode Source Editor` and tick `Copilot`.
+From the Apple menu located in the top-left corner of your screen click `System Settings`. Navigate to `Privacy & Security` then toward the bottom click `Extensions`. Click `Xcode Source Editor` and tick `Codeium`.
     
 If you are using macOS Monterey, enter the `Extensions` menu in `System Preferences.app` with its dedicated icon.
-
-### Setting Up GitHub Copilot
- 
-1. In the host app, switch to the service tab and click on GitHub Copilot to access your GitHub Copilot account settings.
-2. Optionally setup the path to Node. The default value is just `node`, Copilot for Xcode.app will try to find the Node from the PATH available in a login shell. If your Node is installed somewhere else, you can run `which node` from terminal to get the path. 
-3. Click "Sign In", and you will be directed to a verification website provided by GitHub, and a user code will be pasted into your clipboard.
-4. After signing in, go back to the app and click "Confirm Sign-in" to finish.
-5. Go to "Feature - Suggestion" and update the feature provider to "GitHub Copilot".
-
-The installed language server is located at `~/Library/Application Support/com.intii.CopilotForXcode/GitHub Copilot/executable/`.
 
 ### Setting Up Codeium
 
@@ -98,12 +66,7 @@ The installed language server is located at `~/Library/Application Support/com.i
 
 > The key is stored in the keychain. When the helper app tries to access the key for the first time, it will prompt you to enter the password to access the keychain. Please select "Always Allow" to let the helper app access the key.
 
-The installed language server is located at `~/Library/Application Support/com.intii.CopilotForXcode/Codeium/executable/`.
-
-### Setting Up OpenAI API Key
-
-1. In the host app, click OpenAI to enter the OpenAI account settings.
-2. Enter your api key to the text field.
+The installed language server is located at `~/Library/Application Support/com.intii.CodeiumForXcode/Codeium/executable/`.
 
 ### Granting Permissions to the App
 
@@ -111,31 +74,23 @@ The first time the app is open and command run, the extension will ask for the n
 
 Alternatively, you may manually grant the required permissions by navigating to the `Privacy & Security` tab in the `System Settings.app`.
 
-- To grant permissions for the Accessibility API, click `Accessibility`, and drag `CopilotForXcodeExtensionService.app` to the list. You can locate the extension app by clicking `Reveal Extension App in Finder` in the host app.
+- To grant permissions for the Accessibility API, click `Accessibility`, and drag `CodeiumForXcodeExtensionService.app` to the list. You can locate the extension app by clicking `Reveal Extension App in Finder` in the host app.
 
 <img alt="Accessibility API" src="/accessibility_api_permission.png" width="500px">
 
 If you encounter an alert requesting permission that you have previously granted, please remove the permission from the list and add it again to re-grant the necessary permissions.
 
-### Managing `CopilotForXcodeExtensionService.app`
+### Managing `CodeiumForXcodeExtensionService.app`
 
-This app runs whenever you open `Copilot for Xcode.app` or `Xcode.app`. You can quit it with its menu bar item that looks like a steering wheel.
+This app runs whenever you open `Codeium for Xcode.app` or `Xcode.app`. You can quit it with its menu bar item that looks like a steering wheel.
 
 You can also set it to quit automatically when the above 2 apps are closed.
 
 ## Update 
 
-If the app was installed via Homebrew, you can update it by running:
-
-```bash
-brew upgrade --cask copilot-for-xcode
-```
-
-Alternatively, You can use the in-app updater or download the latest version manually from the latest [release](https://github.com/intitni/CopilotForXcode/releases).  
+You can use the in-app updater or download the latest version manually from the latest [release](https://github.com/intitni/CodeiumForXcode/releases).  
 
 After updating, please restart Xcode to allow the extension to reload.
-
-If you are upgrading from a version lower than **0.7.0**, please run `Copilot for Xcode.app` at least once to let it set up the new launch agent for you and re-grant the permissions according to the new rules.
 
 If you find that some of the features are no longer working, please first try regranting permissions to the app.
 
@@ -143,7 +98,7 @@ If you find that some of the features are no longer working, please first try re
 
 ### Suggestion
 
-The app can provide real-time code suggestions based on the files you have opened. It's powered by GitHub Copilot and Codeium. 
+The app can provide real-time code suggestions based on the files you have opened. 
 
 If you're working on a company project and don't want the suggestion feature to be triggered, you can globally disable it and choose to enable it only for specific projects. 
 
@@ -159,70 +114,12 @@ Whenever you stop typing for a few milliseconds, the app will automatically fetc
 - Accept Suggestion: Add the suggestion to the code.
 - Reject Suggestion: Remove the suggestion comments.
 - Toggle Real-time Suggestions: When turn on, Copilot will auto-insert suggestion comments to your code while editing.
-- Real-time Suggestions: Call only by Copilot for Xcode. When suggestions are successfully fetched, Copilot for Xcode will run this command to present the suggestions.
-- Prefetch Suggestions: Call only by Copilot for Xcode. In the background, Copilot for Xcode will occasionally run this command to prefetch real-time suggestions.
-
-#### Keyboard Shortcuts
-
-| Shortcut | Description |
-|:---:|---|
-| `⌘W` | Cancel. |
-| `⌘↩︎` | Accept suggestion. |
-| `⇧↩︎` | Add new line. |
-
-### Chat
-
-This feature is powered by ChatGPT. Please ensure that you have set up your OpenAI account before using it.
-
-There are currently two tabs in the chat panel: one is available shared across Xcode, and the other is only available in the current file.
-
-You can detach the chat panel by simply dragging it away. Once detached, the chat panel will remain visible even if Xcode is inactive. To re-attach it to the widget, click the message bubble button located next to the circular widget.
-
-#### Commands
-
-- Chat with Selection: Open a chat window, if there is a selection, the selected code will be added to the prompt.
-- Explain Selection: Open a chat window and explain the selected code.
-
-#### Keyboard Shortcuts
-
-| Shortcut | Description |
-|:---:|---|
-| `⌘W` | Close the chat. |
-| `⌘M` | Minimize the chat, you can bring it back with any chat commands or by clicking the circular widget. |
-| `⇧↩︎` | Add new line. |
-
-#### Chat Plugins
-
-The chat panel supports chat plugins that may not require an OpenAI API key. For example, if you need to use the `/run` plugin, you just type 
-```
-/run echo hello
-```
-
-If you need to end a plugin, you can just type 
-```
-/exit
-```
-
-| Command | Description |
-|:---:|---|
-| `/run` | Runs the command under the project root. You can also use environment variable `PROJECT_ROOT` to get the project root and `FILE_PATH` to get the editing file path.|
-| `/airun` | Create a command with natural language. You can ask to modify the command if it is not what you want. After confirming, the command will be executed by calling the `/run` plugin. |
-
-### Prompt to Code
-
-Refactor selected code or write new code using natural language.
-
-#### Commands
-
-- Prompt to Code: Open a prompt to code window, where you can use natural language to write or edit selected code.
-
-### Custom Commands
-
-You can create custom commands that run Chat and Prompt to Code with personalized prompts. These commands are easily accessible from both the Xcode menu bar and the context menu of the circular widget. 
+- Real-time Suggestions: Call only by Codeium for Xcode. When suggestions are successfully fetched, Copilot for Xcode will run this command to present the suggestions.
+- Prefetch Suggestions: Call only by Codeium for Xcode. In the background, Codeium for Xcode will occasionally run this command to prefetch real-time suggestions.
 
 ## Key Bindings
 
-It looks like there is no way to add default key bindings to commands, but you can set them up in `Xcode settings > Key Bindings`. You can filter the list by typing `copilot` in the search bar.
+It looks like there is no way to add default key bindings to commands, but you can set them up in `Xcode settings > Key Bindings`. You can filter the list by typing `codeium` in the search bar.
 
 A [recommended setup](https://github.com/intitni/CopilotForXcode/issues/14) that should cause no conflict is
 
@@ -240,20 +137,6 @@ Essentially using `⌥⇧` as the "access" key combination for all bindings.
 
 Another convenient method to access commands is by using the `⇧⌘/` shortcut to search for a command in the menu bar.
 
-## Prevent Suggestions Being Committed (in comment mode)
-
-Since the suggestions are presented as comments, they are in your code. If you are not careful enough, they can be committed to your git repo. To avoid that, I would recommend adding a pre-commit git hook to prevent this from happening.
-
-```sh
-#!/bin/sh
-
-# Check if the commit message contains the string
-if git diff --cached --diff-filter=ACMR | grep -q "/*========== Copilot Suggestion"; then
-  echo "Error: Commit contains Copilot suggestions generated by Copilot for Xcode."
-  exit 1
-fi
-```
-
 ## Limitations
 
 - The first run of the extension will be slow. Be patient.
@@ -263,10 +146,3 @@ fi
 ## License 
 
 MIT.
-
-## Credits
-
-The app uses the LSP provided through [Copilot.vim](https://github.com/github/copilot.vim/tree/release/copilot/dist) to generate suggestions and displays them as comments or in a separate window.
-
-Thanks to [LSP-copilot](https://github.com/TerminalFi/LSP-copilot) for showing the way to interact with GitHub Copilot. And thanks to [LanguageClient](https://github.com/ChimeHQ/LanguageClient) for the Language Server Protocol support in Swift.
-

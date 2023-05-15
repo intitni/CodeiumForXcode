@@ -11,7 +11,7 @@ extension LaunchAgentManager {
                 .appendingPathComponent("Contents")
                 .appendingPathComponent("Applications")
                 .appendingPathComponent(
-                    "CopilotForXcodeExtensionService.app/Contents/MacOS/CopilotForXcodeExtensionService"
+                    "CodeiumForXcodeExtensionService.app/Contents/MacOS/CodeiumForXcodeExtensionService"
                 )
                 .path
         )

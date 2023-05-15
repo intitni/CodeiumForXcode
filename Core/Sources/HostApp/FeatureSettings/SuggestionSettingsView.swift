@@ -44,18 +44,18 @@ struct SuggestionSettingsView: View {
                     Text("Presentation")
                 }
 
-                Picker(selection: $settings.suggestionFeatureProvider) {
-                    ForEach(SuggestionFeatureProvider.allCases, id: \.rawValue) {
-                        switch $0 {
-                        case .gitHubCopilot:
-                            Text("GitHub Copilot").tag($0)
-                        case .codeium:
-                            Text("Codeium").tag($0)
-                        }
-                    }
-                } label: {
-                    Text("Feature Provider")
-                }
+//                Picker(selection: $settings.suggestionFeatureProvider) {
+//                    ForEach(SuggestionFeatureProvider.allCases, id: \.rawValue) {
+//                        switch $0 {
+//                        case .gitHubCopilot:
+//                            Text("GitHub Copilot").tag($0)
+//                        case .codeium:
+//                            Text("Codeium").tag($0)
+//                        }
+//                    }
+//                } label: {
+//                    Text("Feature Provider")
+//                }
 
                 Toggle(isOn: $settings.realtimeSuggestionToggle) {
                     Text("Real-time suggestion")

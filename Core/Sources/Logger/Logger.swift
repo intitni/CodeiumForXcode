@@ -21,7 +21,7 @@ public final class Logger {
     public static let temp = Logger(category: "Temp")
     #endif
 
-    public init(subsystem: String = "com.intii.CopilotForXcode", category: String) {
+    public init(subsystem: String = "com.intii.CodeiumForXcode", category: String) {
         self.subsystem = subsystem
         self.category = category
     }

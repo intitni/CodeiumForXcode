@@ -57,7 +57,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         statusBarItem.menu = statusBarMenu
 
         let hostAppName = Bundle.main.object(forInfoDictionaryKey: "HOST_APP_NAME") as? String
-            ?? "Copilot for Xcode"
+            ?? "Codeium for Xcode"
 
         let copilotName = NSMenuItem(
             title: hostAppName,
@@ -210,7 +210,7 @@ func locateHostBundleURL(url: URL) -> URL? {
     }
     let devAppURL = url
         .deletingLastPathComponent()
-        .appendingPathComponent("Copilot for Xcode Dev.app")
+        .appendingPathComponent("Codeium for Xcode Dev.app")
     return devAppURL
 }
 
