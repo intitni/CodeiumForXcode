@@ -1,4 +1,5 @@
 import Foundation
+import LaunchAgentManager
 import SwiftUI
 import UpdateChecker
 
@@ -36,7 +37,8 @@ public struct TabContainer: View {
                 case .feature:
                     FeatureSettingsView()
                 case .customCommand:
-                    CustomCommandView()
+                    EmptyView()
+//                    CustomCommandView()
                 case .debug:
                     DebugSettingsView()
                 }
@@ -67,6 +69,20 @@ public struct TabContainer: View {
         .environment(\.toast) { [toastController] content, type in
             toastController.toast(content: content, type: type)
         }
+        .onAppear {
+            #if DEBUG
+            // do not auto install on debug build
+            #else
+            Task {
+                do {
+                    try await LaunchAgentManager()
+                        .setupLaunchAgentForTheFirstTimeIfNeeded()
+                } catch {
+                    toastController.toast(content: Text(error.localizedDescription), type: .error)
+                }
+            }
+            #endif
+        }
     }
 }
 
@@ -94,12 +110,13 @@ struct TabBar: View {
                         tab: tab
                     )
                 case .customCommand:
-                    TabBarButton(
-                        currentTab: $tab,
-                        title: "Custom Command",
-                        image: "command.square",
-                        tab: tab
-                    )
+//                    TabBarButton(
+//                        currentTab: $tab,
+//                        title: "Custom Command",
+//                        image: "command.square",
+//                        tab: tab
+//                    )
+                    EmptyView()
                 case .debug:
                     TabBarButton(
                         currentTab: $tab,

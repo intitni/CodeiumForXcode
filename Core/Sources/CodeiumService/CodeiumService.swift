@@ -99,7 +99,7 @@ public class CodeiumSuggestionService {
         }
         let tempFolderURL = FileManager.default.temporaryDirectory
         let managerDirectoryURL = tempFolderURL
-            .appendingPathComponent("com.intii.CopilotForXcode")
+            .appendingPathComponent("com.intii.CodeiumForXcode")
             .appendingPathComponent(UUID().uuidString)
         if !FileManager.default.fileExists(atPath: managerDirectoryURL.path) {
             try FileManager.default.createDirectory(

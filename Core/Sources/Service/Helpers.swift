@@ -35,16 +35,16 @@ extension NSError {
             case .timeout:
                 message = "Timeout."
             }
-            return NSError(domain: "com.intii.CopilotForXcode", code: -1, userInfo: [
+            return NSError(domain: "com.intii.CodeiumForXcode", code: -1, userInfo: [
                 NSLocalizedDescriptionKey: message,
             ])
         }
         if let error = error as? CancellationError {
-            return NSError(domain: "com.intii.CopilotForXcode", code: -100, userInfo: [
+            return NSError(domain: "com.intii.CodeiumForXcode", code: -100, userInfo: [
                 NSLocalizedDescriptionKey: error.localizedDescription,
             ])
         }
-        return NSError(domain: "com.intii.CopilotForXcode", code: -1, userInfo: [
+        return NSError(domain: "com.intii.CodeiumForXcode", code: -1, userInfo: [
             NSLocalizedDescriptionKey: error.localizedDescription,
         ])
     }

@@ -141,17 +141,17 @@ struct WidgetContextMenu: View {
 
     var body: some View {
         Group {
-            Group { // Commands
-                if !isChatOpen {
-                    Button(action: {
-                        onOpenChatClicked()
-                    }) {
-                        Text("Open Chat")
-                    }
-                }
-
-                customCommandMenu()
-            }
+//            Group { // Commands
+//                if !isChatOpen {
+//                    Button(action: {
+//                        onOpenChatClicked()
+//                    }) {
+//                        Text("Open Chat")
+//                    }
+//                }
+//
+//                customCommandMenu()
+//            }
 
             Divider()
 
@@ -164,23 +164,23 @@ struct WidgetContextMenu: View {
             Divider()
 
             Group { // Settings
-                Button(action: {
-                    chatWindowViewModel.chatPanelInASeparateWindow.toggle()
-                }) {
-                    Text("Detach Chat Panel")
-                    if chatWindowViewModel.chatPanelInASeparateWindow {
-                        Image(systemName: "checkmark")
-                    }
-                }
+//                Button(action: {
+//                    chatWindowViewModel.chatPanelInASeparateWindow.toggle()
+//                }) {
+//                    Text("Detach Chat Panel")
+//                    if chatWindowViewModel.chatPanelInASeparateWindow {
+//                        Image(systemName: "checkmark")
+//                    }
+//                }
 
-                Button(action: {
-                    useGlobalChat.toggle()
-                }) {
-                    Text("Use Shared Conversation")
-                    if useGlobalChat {
-                        Image(systemName: "checkmark")
-                    }
-                }
+//                Button(action: {
+//                    useGlobalChat.toggle()
+//                }) {
+//                    Text("Use Shared Conversation")
+//                    if useGlobalChat {
+//                        Image(systemName: "checkmark")
+//                    }
+//                }
 
                 Button(action: {
                     realtimeSuggestionToggle.toggle()

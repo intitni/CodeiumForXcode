@@ -4,7 +4,7 @@ import Preferences
 
 extension UserDefaultPreferenceKeys {
     struct OldMigrationVersion: UserDefaultPreferenceKey {
-        var defaultValue: String = "0"
+        var defaultValue: String = "150"
         let key = "OldMigrationVersion"
     }
 

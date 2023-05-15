@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "octopus.png",
+      "filename" : "16x16.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "octopus 2.png",
+      "filename" : "32x32.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "octopus 1.png",
+      "filename" : "48.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

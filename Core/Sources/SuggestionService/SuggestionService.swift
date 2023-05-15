@@ -36,7 +36,8 @@ public final class SuggestionService: SuggestionServiceType {
     lazy var suggestionProvider: SuggestionServiceProvider = buildService()
 
     var serviceType: SuggestionFeatureProvider {
-        UserDefaults.shared.value(for: \.suggestionFeatureProvider)
+//        UserDefaults.shared.value(for: \.suggestionFeatureProvider)
+        .codeium
     }
 
     public init(projectRootURL: URL, onServiceLaunched: @escaping (SuggestionServiceType) -> Void) {

@@ -10,7 +10,6 @@
 		C8009BFF2941C551007AA7E8 /* ToggleRealtimeSuggestionsCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8009BFE2941C551007AA7E8 /* ToggleRealtimeSuggestionsCommand.swift */; };
 		C8009C032941C576007AA7E8 /* RealtimeSuggestionCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8009C022941C576007AA7E8 /* RealtimeSuggestionCommand.swift */; };
 		C800DBB1294C624D00B04CAC /* PrefetchSuggestionsCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = C800DBB0294C624D00B04CAC /* PrefetchSuggestionsCommand.swift */; };
-		C81291AE2994F8A000196E12 /* copilot in Copy CopilotLSP */ = {isa = PBXBuildFile; fileRef = C832A47B2940C71D000989F2 /* copilot */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		C81291D72994FE6900196E12 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C81291D52994FE6900196E12 /* Main.storyboard */; };
 		C814588F2939EFDC00135263 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C814588E2939EFDC00135263 /* Cocoa.framework */; };
 		C81458942939EFDC00135263 /* SourceEditorExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81458932939EFDC00135263 /* SourceEditorExtension.swift */; };
@@ -39,7 +38,7 @@
 		C87B03AC293B2CF300C77EAE /* XcodeKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C81458902939EFDC00135263 /* XcodeKit.framework */; };
 		C87B03AD293B2CF300C77EAE /* XcodeKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = C81458902939EFDC00135263 /* XcodeKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		C882175C294187EF00A22FD3 /* Client in Frameworks */ = {isa = PBXBuildFile; productRef = C882175B294187EF00A22FD3 /* Client */; };
-		C8C8B60929AFA35F00034BEE /* CopilotForXcodeExtensionService.app in Embed XPCService */ = {isa = PBXBuildFile; fileRef = C861E60E2994F6070056CB02 /* CopilotForXcodeExtensionService.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		C8C8B60929AFA35F00034BEE /* CodeiumForXcodeExtensionService.app in Embed XPCService */ = {isa = PBXBuildFile; fileRef = C861E60E2994F6070056CB02 /* CodeiumForXcodeExtensionService.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C8DCF00029CE11D500FDDDD7 /* ChatWithSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DCEFFF29CE11D500FDDDD7 /* ChatWithSelection.swift */; };
 /* End PBXBuildFile section */
 
@@ -74,7 +73,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 7;
 			files = (
-				C81291AE2994F8A000196E12 /* copilot in Copy CopilotLSP */,
 			);
 			name = "Copy CopilotLSP";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -106,7 +104,7 @@
 			dstSubfolderSpec = 6;
 			files = (
 				C8216B802980378300AD38C7 /* Helper in Embed XPCService */,
-				C8C8B60929AFA35F00034BEE /* CopilotForXcodeExtensionService.app in Embed XPCService */,
+				C8C8B60929AFA35F00034BEE /* CodeiumForXcodeExtensionService.app in Embed XPCService */,
 			);
 			name = "Embed XPCService";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -149,7 +147,7 @@
 		C81458982939EFDC00135263 /* EditorExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = EditorExtension.entitlements; sourceTree = "<group>"; };
 		C81458AD293A009600135263 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		C81458AE293A009800135263 /* Config.debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.debug.xcconfig; sourceTree = "<group>"; };
-		C8189B162938972F00C9DCDA /* Copilot for Xcode Dev.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Copilot for Xcode Dev.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C8189B162938972F00C9DCDA /* Codeium for Xcode Dev.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Codeium for Xcode Dev.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C8189B192938972F00C9DCDA /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		C8189B1D2938973000C9DCDA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C8189B202938973000C9DCDA /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -159,11 +157,10 @@
 		C8216B70298036EC00AD38C7 /* Helper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Helper; sourceTree = BUILT_PRODUCTS_DIR; };
 		C8216B72298036EC00AD38C7 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		C8216B772980370100AD38C7 /* ReloadLaunchAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReloadLaunchAgent.swift; sourceTree = "<group>"; };
-		C832A47B2940C71D000989F2 /* copilot */ = {isa = PBXFileReference; lastKnownFileType = folder; name = copilot; path = copilot.vim/copilot; sourceTree = "<group>"; };
 		C8520300293C4D9000460097 /* Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Helpers.swift; sourceTree = "<group>"; };
 		C8520308293D805800460097 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		C861A6A229E5503F005C41A3 /* PromptToCodeCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptToCodeCommand.swift; sourceTree = "<group>"; };
-		C861E60E2994F6070056CB02 /* CopilotForXcodeExtensionService.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CopilotForXcodeExtensionService.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C861E60E2994F6070056CB02 /* CodeiumForXcodeExtensionService.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CodeiumForXcodeExtensionService.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C861E6102994F6070056CB02 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		C861E6142994F6080056CB02 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C861E6192994F6080056CB02 /* ExtensionService.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ExtensionService.entitlements; sourceTree = "<group>"; };
@@ -259,7 +256,6 @@
 				C81458AD293A009600135263 /* Config.xcconfig */,
 				C81458AE293A009800135263 /* Config.debug.xcconfig */,
 				C8CD828229B88006008D044D /* TestPlan.xctestplan */,
-				C832A47B2940C71D000989F2 /* copilot */,
 				C8189B282938979000C9DCDA /* Core */,
 				C8189B182938972F00C9DCDA /* Copilot for Xcode */,
 				C81458922939EFDC00135263 /* EditorExtension */,
@@ -273,10 +269,10 @@
 		C8189B172938972F00C9DCDA /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C8189B162938972F00C9DCDA /* Copilot for Xcode Dev.app */,
+				C8189B162938972F00C9DCDA /* Codeium for Xcode Dev.app */,
 				C814588C2939EFDC00135263 /* Copilot.appex */,
 				C8216B70298036EC00AD38C7 /* Helper */,
-				C861E60E2994F6070056CB02 /* CopilotForXcodeExtensionService.app */,
+				C861E60E2994F6070056CB02 /* CodeiumForXcodeExtensionService.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -370,7 +366,7 @@
 				C86612F72A06AF74009197D9 /* HostApp */,
 			);
 			productName = "Copilot for Xcode";
-			productReference = C8189B162938972F00C9DCDA /* Copilot for Xcode Dev.app */;
+			productReference = C8189B162938972F00C9DCDA /* Codeium for Xcode Dev.app */;
 			productType = "com.apple.product-type.application";
 		};
 		C8216B6F298036EC00AD38C7 /* Helper */ = {
@@ -411,7 +407,7 @@
 				C861E61D2994F6150056CB02 /* Service */,
 			);
 			productName = ExtensionService;
-			productReference = C861E60E2994F6070056CB02 /* CopilotForXcodeExtensionService.app */;
+			productReference = C861E60E2994F6070056CB02 /* CodeiumForXcodeExtensionService.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */

@@ -29,7 +29,7 @@ struct AppInfoView: View {
                 Text(
                     Bundle.main
                         .object(forInfoDictionaryKey: "HOST_APP_NAME") as? String
-                        ?? "Copilot for Xcode"
+                        ?? "Codeium for Xcode"
                 )
                 .font(.title)
                 Text(appVersion ?? "")
@@ -50,7 +50,7 @@ struct AppInfoView: View {
 
             HStack(spacing: 16) {
                 Link(
-                    destination: URL(string: "https://github.com/intitni/CopilotForXcode")!
+                    destination: URL(string: "https://github.com/intitni/CodeiumForXcode")!
                 ) {
                     HStack(spacing: 2) {
                         Image(systemName: "link")
@@ -99,7 +99,7 @@ struct ExtensionServiceView: View {
                         let url = Bundle.main.bundleURL
                             .appendingPathComponent("Contents")
                             .appendingPathComponent("Applications")
-                            .appendingPathComponent("CopilotForXcodeExtensionService.app")
+                            .appendingPathComponent("CodeiumForXcodeExtensionService.app")
                         workspace.activateFileViewerSelecting([url])
                     }
                 }) {
