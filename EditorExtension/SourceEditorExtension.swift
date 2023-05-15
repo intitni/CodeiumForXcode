@@ -14,15 +14,16 @@ class SourceEditorExtension: NSObject, XCSourceEditorExtension {
             ToggleRealtimeSuggestionsCommand(),
             RealtimeSuggestionsCommand(),
             PrefetchSuggestionsCommand(),
-            ChatWithSelectionCommand(),
-            PromptToCodeCommand(),
+//            ChatWithSelectionCommand(),
+//            PromptToCodeCommand(),
 
-            SeparatorCommand().named("------"),
+//            SeparatorCommand().named("------"),
         ].map(makeCommandDefinition)
     }
 
     var custom: [[XCSourceEditorCommandDefinitionKey: Any]] {
-        customCommands()
+        return []
+//        customCommands()
     }
 
     var commandDefinitions: [[XCSourceEditorCommandDefinitionKey: Any]] {
