@@ -93,8 +93,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         statusBarMenu.addItem(copilotName)
         statusBarMenu.addItem(openCopilotForXcode)
         statusBarMenu.addItem(checkForUpdate)
-        statusBarMenu.addItem(.separator())
-        statusBarMenu.addItem(openGlobalChat)
+//        statusBarMenu.addItem(.separator())
+//        statusBarMenu.addItem(openGlobalChat)
         statusBarMenu.addItem(.separator())
         statusBarMenu.addItem(quitItem)
     }
