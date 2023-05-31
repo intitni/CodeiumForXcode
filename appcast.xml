@@ -10,7 +10,7 @@
       <sparkle:shortVersionString>0.17.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>12.0</sparkle:minimumSystemVersion>
       <sparkle:releaseNotesLink>
-        https://github.com/intitni/CodeiumForXcode/releases/tag/0.17.1
+        https://github.com/intitni/CodeiumForXcode/releases/tag/codeium%2F0.17.1
       </sparkle:releaseNotesLink>
       <enclosure url="https://github.com/intitni/CodeiumForXcode/releases/download/codeium%2F0.17.1/Codeium.for.Xcode.app.zip" length="15198431" type="application/octet-stream" sparkle:edSignature="UNw5WSfGAVBFKoY0y9/cFNhBLLcZ1vX+09WuaSztRfUdxIRIK4EamN5PqHx9HUsO9tai3cC4ZQmMP4aUmn89AQ=="/>
     </item>
