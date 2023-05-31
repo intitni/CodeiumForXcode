@@ -1,18 +1,18 @@
 <?xml version="1.0" standalone="yes"?>
 <rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
-    <title>Copilot for Xcode</title>
+    <title>Codeium for Xcode</title>
 
     <item>
       <title>0.17.1</title>
-      <pubDate>Wed, 31 May 2023 12:30:21 +0800</pubDate>
+      <pubDate>Wed, 31 May 2023 14:04:40 +0800</pubDate>
       <sparkle:version>171</sparkle:version>
       <sparkle:shortVersionString>0.17.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>12.0</sparkle:minimumSystemVersion>
       <sparkle:releaseNotesLink>
-        https://github.com/intitni/CopilotForXcode/releases/tag/0.17.1
+        https://github.com/intitni/CodeiumForXcode/releases/tag/0.17.1
       </sparkle:releaseNotesLink>
-      <enclosure url="https://github.com/intitni/CopilotForXcode/releases/download/0.17.1/Copilot.for.Xcode.app.zip" length="19078871" type="application/octet-stream" sparkle:edSignature="YCA19m2Ct8oM45VQXGWqYDL3OLdAL4dT9ZOJinc2w8VExVy/21ei27x9+qA8/7F/+njC3vpdJ/8K3fu3PYDSDw=="/>
+      <enclosure url="https://github.com/intitni/CodeiumForXcode/releases/download/0.17.1/Codeium.for.Xcode.app.zip" length="15198431" type="application/octet-stream" sparkle:edSignature="UNw5WSfGAVBFKoY0y9/cFNhBLLcZ1vX+09WuaSztRfUdxIRIK4EamN5PqHx9HUsO9tai3cC4ZQmMP4aUmn89AQ=="/>
     </item>
 
     <item>
