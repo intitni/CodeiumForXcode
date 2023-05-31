@@ -17,19 +17,17 @@ let package = Package(
                 "UpdateChecker",
                 "Logger",
                 "UserDefaultsObserver",
+                "XcodeInspector",
             ]
         ),
         .library(
             name: "Client",
             targets: [
                 "SuggestionModel",
-                "GitHubCopilotService",
                 "Client",
                 "XPCShared",
                 "Preferences",
-                "LaunchAgentManager",
                 "Logger",
-                "UpdateChecker",
             ]
         ),
         .library(
@@ -44,6 +42,7 @@ let package = Package(
                 "LaunchAgentManager",
                 "Logger",
                 "UpdateChecker",
+                "OpenAIService",
             ]
         ),
     ],
@@ -52,7 +51,6 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-async-algorithms", from: "0.1.0"),
         .package(url: "https://github.com/raspu/Highlightr", from: "2.1.0"),
         .package(url: "https://github.com/JohnSundell/Splash", branch: "master"),
-        .package(url: "https://github.com/nmdias/FeedKit", from: "9.1.2"),
         .package(url: "https://github.com/gonzalezreal/swift-markdown-ui", from: "2.1.0"),
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.0.0"),
         .package(url: "https://github.com/alfianlosari/GPTEncoder", from: "1.0.4"),
@@ -175,11 +173,28 @@ let package = Package(
 
         .target(
             name: "ChatService",
-            dependencies: ["OpenAIService", "ChatPlugins", "Environment"]
+            dependencies: [
+                "ChatPlugins",
+                "ChatContextCollector",
+                "OpenAIService",
+                "Environment",
+                "XcodeInspector",
+                "Preferences",
+            ]
         ),
         .target(
             name: "ChatPlugins",
             dependencies: ["OpenAIService", "Environment", "Terminal"]
+        ),
+        .target(
+            name: "ChatContextCollector",
+            dependencies: [
+                "OpenAIService",
+                "Environment",
+                "Preferences",
+                "SuggestionModel",
+                "XcodeInspector",
+            ]
         ),
 
         // MARK: - UI
@@ -194,6 +209,7 @@ let package = Package(
                 "Splash",
                 "UserDefaultsObserver",
                 "Logger",
+                "XcodeInspector",
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
                 .product(name: "MarkdownUI", package: "swift-markdown-ui"),
             ]
@@ -215,8 +231,7 @@ let package = Package(
             name: "UpdateChecker",
             dependencies: [
                 "Logger",
-                "Sparkle",
-                .product(name: "FeedKit", package: "FeedKit"),
+                "Sparkle"
             ]
         ),
         .target(name: "AXExtension"),
@@ -225,12 +240,28 @@ let package = Package(
             dependencies: ["Preferences", "GitHubCopilotService"]
         ),
         .target(name: "UserDefaultsObserver"),
+        .target(
+            name: "XcodeInspector",
+            dependencies: [
+                "AXExtension",
+                "Environment",
+                "Logger",
+                "AXNotificationStream",
+                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+            ]
+        ),
 
         // MARK: - GitHub Copilot
 
         .target(
             name: "GitHubCopilotService",
-            dependencies: ["LanguageClient", "SuggestionModel", "XPCShared", "Preferences"]
+            dependencies: [
+                "LanguageClient",
+                "SuggestionModel",
+                "XPCShared",
+                "Preferences",
+                "Terminal",
+            ]
         ),
         .testTarget(
             name: "GitHubCopilotServiceTests",

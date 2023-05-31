@@ -8,7 +8,10 @@ import SuggestionInjector
 import SuggestionModel
 import SuggestionService
 import UserDefaultsObserver
+import XcodeInspector
 import XPCShared
+
+// MARK: - Filespace
 
 @ServiceActor
 final class Filespace {
@@ -64,7 +67,30 @@ final class Filespace {
     func refreshUpdateTime() {
         lastSuggestionUpdateTime = Environment.now()
     }
+    
+    func validateSuggestions(lines: [String], cursorPosition: CursorPosition) -> Bool {
+        if cursorPosition.line != suggestionSourceSnapshot.cursorPosition.line {
+            reset()
+            return false
+        }
+        
+        guard cursorPosition.line >= 0, cursorPosition.line < lines.count else {
+            reset()
+            return false
+        }
+        
+        let editingLine = lines[cursorPosition.line].dropLast(1) // dropping \n
+        let suggestionFirstLine = presentingSuggestion?.text.split(separator: "\n").first ?? ""
+        if !suggestionFirstLine.hasPrefix(editingLine) {
+            reset()
+            return false
+        }
+        
+        return true
+    }
 }
+
+// MARK: - Workspace
 
 @ServiceActor
 final class Workspace {
@@ -75,9 +101,10 @@ final class Workspace {
     }
 
     let projectRootURL: URL
+    let openedFileRecoverableStorage: OpenedFileRecoverableStorage
     var lastSuggestionUpdateTime = Environment.now()
     var isExpired: Bool {
-        Environment.now().timeIntervalSince(lastSuggestionUpdateTime) > 60 * 60 * 8
+        Environment.now().timeIntervalSince(lastSuggestionUpdateTime) > 60 * 60 * 1
     }
 
     private(set) var filespaces = [URL: Filespace]()
@@ -85,7 +112,6 @@ final class Workspace {
         UserDefaults.shared.value(for: \.realtimeSuggestionToggle)
     }
 
-    var realtimeSuggestionRequests = Set<Task<Void, Error>>()
     let userDefaultsObserver = UserDefaultsObserver(
         object: UserDefaults.shared, forKeyPaths: [
             UserDefaultPreferenceKeys().suggestionFeatureEnabledProjectList.key,
@@ -93,17 +119,7 @@ final class Workspace {
         ], context: nil
     )
 
-    private var _suggestionService: SuggestionServiceType? {
-        didSet {
-            guard _suggestionService != nil else { return }
-            Task {
-                try await Task.sleep(nanoseconds: 1_000_000_000)
-                for (_, filespace) in filespaces {
-                    notifyOpenFile(filespace: filespace)
-                }
-            }
-        }
-    }
+    private var _suggestionService: SuggestionServiceType?
 
     private var suggestionService: SuggestionServiceType? {
         // Check if the workspace is disabled.
@@ -144,10 +160,16 @@ final class Workspace {
 
     private init(projectRootURL: URL) {
         self.projectRootURL = projectRootURL
+        openedFileRecoverableStorage = .init(projectRootURL: projectRootURL)
 
         userDefaultsObserver.onChange = { [weak self] in
             guard let self else { return }
             _ = self.suggestionService
+        }
+        
+        let openedFiles = openedFileRecoverableStorage.openedFiles
+        for fileURL in openedFiles {
+            _ = createFilespaceIfNeeded(fileURL: fileURL)
         }
     }
 
@@ -167,18 +189,37 @@ final class Workspace {
         return false
     }
 
+    /// This is the only way to create a workspace and a filespace.
     static func fetchOrCreateWorkspaceIfNeeded(fileURL: URL) async throws
         -> (workspace: Workspace, filespace: Filespace)
     {
-        // never create duplicated filespaces
+        // If we know which project is opened.
+        if let currentProjectURL = try await Environment.fetchCurrentProjectRootURLFromXcode() {
+            if let existed = workspaces[currentProjectURL] {
+                let filespace = existed.createFilespaceIfNeeded(fileURL: fileURL)
+                return (existed, filespace)
+            }
+            
+            let new = Workspace(projectRootURL: currentProjectURL)
+            workspaces[currentProjectURL] = new
+            let filespace = new.createFilespaceIfNeeded(fileURL: fileURL)
+            return (new, filespace)
+        }
+        
+        // If not, we try to reuse a filespace if found.
+        //
+        // Sometimes, we can't get the project root path from Xcode window, for example, when the
+        // quick open window in displayed.
         for workspace in workspaces.values {
             if let filespace = workspace.filespaces[fileURL] {
                 return (workspace, filespace)
             }
         }
 
-        let projectURL = try await Environment.fetchCurrentProjectRootURL(fileURL)
-        let workspaceURL = projectURL ?? fileURL
+        // If we can't find an existed one, we will try to guess it.
+        // Most of the time we won't enter this branch, just incase.
+        
+        let workspaceURL = try await Environment.guessProjectRootURLForFile(fileURL)
 
         let workspace = {
             if let existed = workspaces[workspaceURL] {
@@ -199,7 +240,7 @@ final class Workspace {
         return (workspace, filespace)
     }
 
-    func createFilespaceIfNeeded(fileURL: URL) -> Filespace {
+    private func createFilespaceIfNeeded(fileURL: URL) -> Filespace {
         let existedFilespace = filespaces[fileURL]
         let filespace = existedFilespace ?? .init(fileURL: fileURL, onSave: { [weak self]
             filespace in
@@ -218,16 +259,14 @@ final class Workspace {
     }
 }
 
+// MARK: - Suggestion
+
 extension Workspace {
     @discardableResult
     func generateSuggestions(
         forFileAt fileURL: URL,
-        editor: EditorContent,
-        shouldcancelInFlightRealtimeSuggestionRequests: Bool = true
+        editor: EditorContent
     ) async throws -> [CodeSuggestion] {
-        if shouldcancelInFlightRealtimeSuggestionRequests {
-            cancelInFlightRealtimeSuggestionRequests()
-        }
         refreshUpdateTime()
 
         let filespace = createFilespaceIfNeeded(fileURL: fileURL)
@@ -268,7 +307,6 @@ extension Workspace {
     }
 
     func selectNextSuggestion(forFileAt fileURL: URL) {
-        cancelInFlightRealtimeSuggestionRequests()
         refreshUpdateTime()
         guard let filespace = filespaces[fileURL],
               filespace.suggestions.count > 1
@@ -280,7 +318,6 @@ extension Workspace {
     }
 
     func selectPreviousSuggestion(forFileAt fileURL: URL) {
-        cancelInFlightRealtimeSuggestionRequests()
         refreshUpdateTime()
         guard let filespace = filespaces[fileURL],
               filespace.suggestions.count > 1
@@ -292,7 +329,6 @@ extension Workspace {
     }
 
     func rejectSuggestion(forFileAt fileURL: URL, editor: EditorContent?) {
-        cancelInFlightRealtimeSuggestionRequests()
         refreshUpdateTime()
 
         if let editor, !editor.uti.isEmpty {
@@ -308,7 +344,6 @@ extension Workspace {
     }
 
     func acceptSuggestion(forFileAt fileURL: URL, editor: EditorContent?) -> CodeSuggestion? {
-        cancelInFlightRealtimeSuggestionRequests()
         refreshUpdateTime()
         guard let filespace = filespaces[fileURL],
               !filespace.suggestions.isEmpty,
@@ -338,6 +373,7 @@ extension Workspace {
 
     func notifyOpenFile(filespace: Filespace) {
         refreshUpdateTime()
+        openedFileRecoverableStorage.openFile(fileURL: filespace.fileURL)
         Task {
             try await suggestionService?.notifyOpenTextDocument(
                 fileURL: filespace.fileURL,
@@ -366,6 +402,8 @@ extension Workspace {
     }
 }
 
+// MARK: - Cleanup
+
 extension Workspace {
     func cleanUp(availableTabs: Set<String>) {
         for (fileURL, _) in filespaces {
@@ -373,6 +411,7 @@ extension Workspace {
                 Task {
                     try await suggestionService?.notifyCloseTextDocument(fileURL: fileURL)
                 }
+                openedFileRecoverableStorage.closeFile(fileURL: fileURL)
                 filespaces[fileURL] = nil
             }
         }
@@ -385,49 +424,12 @@ extension Workspace {
         return filespace.isExpired
     }
 
-    func cancelInFlightRealtimeSuggestionRequests() {
-        for task in realtimeSuggestionRequests {
-            task.cancel()
-        }
-        realtimeSuggestionRequests = []
+    func cancelInFlightRealtimeSuggestionRequests() async {
+        guard let suggestionService else { return }
+        await suggestionService.cancelRequest()
+    }
+    
+    func terminateSuggestionService() async {
+        await _suggestionService?.terminate()
     }
 }
-
-final class FileSaveWatcher {
-    let url: URL
-    var fileHandle: FileHandle?
-    var source: DispatchSourceFileSystemObject?
-    var changeHandler: () -> Void = {}
-
-    init(fileURL: URL) {
-        url = fileURL
-        startup()
-    }
-
-    deinit {
-        source?.cancel()
-    }
-
-    func startup() {
-        if let source = source {
-            source.cancel()
-        }
-
-        fileHandle = try? FileHandle(forReadingFrom: url)
-        if let fileHandle {
-            source = DispatchSource.makeFileSystemObjectSource(
-                fileDescriptor: fileHandle.fileDescriptor,
-                eventMask: .link,
-                queue: .main
-            )
-
-            source?.setEventHandler { [weak self] in
-                self?.changeHandler()
-                self?.startup()
-            }
-
-            source?.resume()
-        }
-    }
-}
-

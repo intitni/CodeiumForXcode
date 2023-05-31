@@ -31,6 +31,8 @@ public protocol GitHubCopilotSuggestionServiceType {
     func notifyChangeTextDocument(fileURL: URL, content: String) async throws
     func notifyCloseTextDocument(fileURL: URL) async throws
     func notifySaveTextDocument(fileURL: URL) async throws
+    func cancelRequest() async
+    func terminate() async
 }
 
 protocol GitHubCopilotLSP {
@@ -52,6 +54,7 @@ enum GitHubCopilotError: Error, LocalizedError {
 public class GitHubCopilotBaseService {
     let projectRootURL: URL
     var server: GitHubCopilotLSP
+    var localProcessServer: CopilotLocalProcessServer?
 
     init(designatedServer: GitHubCopilotLSP) {
         projectRootURL = URL(fileURLWithPath: "/")
@@ -60,7 +63,7 @@ public class GitHubCopilotBaseService {
 
     init(projectRootURL: URL) throws {
         self.projectRootURL = projectRootURL
-        server = try {
+        let (server, localServer) = try {
             let urls = try GitHubCopilotBaseService.createFoldersIfNeeded()
             var userEnvPath = ProcessInfo.processInfo.userEnvironment["PATH"] ?? ""
             if userEnvPath.isEmpty {
@@ -124,6 +127,7 @@ public class GitHubCopilotBaseService {
                 }()
             }
             let localServer = CopilotLocalProcessServer(executionParameters: executionParams)
+            
             localServer.logMessages = UserDefaults.shared.value(for: \.gitHubCopilotVerboseLog)
             localServer.notificationHandler = { _, respond in
                 respond(.timeout)
@@ -156,8 +160,11 @@ public class GitHubCopilotBaseService {
                 )
             }
 
-            return server
+            return (server, localServer)
         }()
+        
+        self.server = server
+        self.localProcessServer = localServer
     }
 
     public static func createFoldersIfNeeded() throws -> (
@@ -238,6 +245,8 @@ public final class GitHubCopilotAuthService: GitHubCopilotBaseService,
 public final class GitHubCopilotSuggestionService: GitHubCopilotBaseService,
     GitHubCopilotSuggestionServiceType
 {
+    private var ongoingTasks = Set<Task<[CodeSuggestion], Error>>()
+
     override public init(projectRootURL: URL = URL(fileURLWithPath: "/")) throws {
         try super.init(projectRootURL: projectRootURL)
     }
@@ -272,27 +281,41 @@ public final class GitHubCopilotSuggestionService: GitHubCopilotBaseService,
             return filePath
         }()
 
-        let completions = try await server
-            .sendRequest(GitHubCopilotRequest.GetCompletionsCycling(doc: .init(
-                source: content,
-                tabSize: tabSize,
-                indentSize: indentSize,
-                insertSpaces: !usesTabsForIndentation,
-                path: fileURL.path,
-                uri: fileURL.path,
-                relativePath: relativePath,
-                languageId: languageId,
-                position: cursorPosition
-            )))
-            .completions
-            .filter { completion in
-                if ignoreSpaceOnlySuggestions {
-                    return !completion.text.allSatisfy { $0.isWhitespace || $0.isNewline }
-                }
-                return true
-            }
+        ongoingTasks.forEach { $0.cancel() }
+        ongoingTasks.removeAll()
+        await localProcessServer?.cancelOngoingTasks()
 
-        return completions
+        let task = Task {
+            let completions = try await server
+                .sendRequest(GitHubCopilotRequest.GetCompletionsCycling(doc: .init(
+                    source: content,
+                    tabSize: tabSize,
+                    indentSize: indentSize,
+                    insertSpaces: !usesTabsForIndentation,
+                    path: fileURL.path,
+                    uri: fileURL.path,
+                    relativePath: relativePath,
+                    languageId: languageId,
+                    position: cursorPosition
+                )))
+                .completions
+                .filter { completion in
+                    if ignoreSpaceOnlySuggestions {
+                        return !completion.text.allSatisfy { $0.isWhitespace || $0.isNewline }
+                    }
+                    return true
+                }
+            try Task.checkCancellation()
+            return completions
+        }
+
+        ongoingTasks.insert(task)
+
+        return try await task.value
+    }
+    
+    public func cancelRequest() async {
+        await localProcessServer?.cancelOngoingTasks()
     }
 
     public func notifyAccepted(_ completion: CodeSuggestion) async {
@@ -356,6 +379,10 @@ public final class GitHubCopilotSuggestionService: GitHubCopilotBaseService,
         let uri = "file://\(fileURL.path)"
 //        Logger.service.debug("Close \(uri)")
         try await server.sendNotification(.didCloseTextDocument(.init(uri: uri)))
+    }
+    
+    public func terminate() async {
+        // automatically handled
     }
 }
 

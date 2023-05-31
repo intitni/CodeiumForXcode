@@ -177,6 +177,10 @@ private struct UserMessage: View {
                 Button("Send Again") {
                     chat.resendMessage(id: id)
                 }
+                
+                Button("Set as Extra System Prompt") {
+                    chat.setAsExtraPrompt(id: id)
+                }
 
                 Divider()
 
@@ -230,6 +234,10 @@ private struct BotMessage: View {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(text, forType: .string)
                     }
+                    
+                    Button("Set as Extra System Prompt") {
+                        chat.setAsExtraPrompt(id: id)
+                    }
 
                     Divider()
 
@@ -258,6 +266,9 @@ struct ChatPanelInputArea: View {
         }
         .padding(8)
         .background(.ultraThickMaterial)
+        .contextMenu {
+            ChatContextMenu(chat: chat)
+        }
     }
 
     var clearButton: some View {
@@ -342,6 +353,71 @@ struct ChatPanelInputArea: View {
     }
 }
 
+struct ChatContextMenu: View {
+    let chat: ChatProvider
+    @AppStorage(\.customCommands) var customCommands
+
+    var body: some View {
+        Group {
+            currentSystemPrompt
+            currentExtraSystemPrompt
+            resetPrompt
+
+            Divider()
+
+            customCommandMenu
+        }
+    }
+
+    @ViewBuilder
+    var currentSystemPrompt: some View {
+        Text("System Prompt:")
+        Text({
+            var text = chat.systemPrompt
+            if text.isEmpty { text = "N/A" }
+            if text.count > 30 { text = String(text.prefix(30)) + "..." }
+            return text
+        }() as String)
+    }
+
+    @ViewBuilder
+    var currentExtraSystemPrompt: some View {
+        Text("Extra Prompt:")
+        Text({
+            var text = chat.extraSystemPrompt
+            if text.isEmpty { text = "N/A" }
+            if text.count > 30 { text = String(text.prefix(30)) + "..." }
+            return text
+        }() as String)
+    }
+
+    var resetPrompt: some View {
+        Button("Reset System Prompt") {
+            chat.resetPrompt()
+        }
+    }
+
+    var customCommandMenu: some View {
+        Menu("Custom Commands") {
+            ForEach(
+                customCommands.filter {
+                    switch $0.feature {
+                    case .chatWithSelection, .customChat: return true
+                    case .promptToCode: return false
+                    }
+                },
+                id: \.name
+            ) { command in
+                Button(action: {
+                    chat.triggerCustomCommand(command)
+                }) {
+                    Text(command.name)
+                }
+            }
+        }
+    }
+}
+
 struct RoundedCorners: Shape {
     var tl: CGFloat = 0.0
     var tr: CGFloat = 0.0
@@ -403,7 +479,7 @@ struct GlobalChatSwitchToggleStyle: ToggleStyle {
         HStack(spacing: 4) {
             Text(configuration.isOn ? "Shared Conversation" : "Local Conversation")
                 .foregroundStyle(.tertiary)
-            
+
             RoundedRectangle(cornerRadius: 10, style: .circular)
                 .foregroundColor(configuration.isOn ? Color.indigo : .gray.opacity(0.5))
                 .frame(width: 30, height: 20, alignment: .center)
