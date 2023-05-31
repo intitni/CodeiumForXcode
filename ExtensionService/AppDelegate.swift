@@ -11,6 +11,7 @@ import SwiftUI
 import UpdateChecker
 import UserDefaultsObserver
 import UserNotifications
+import XcodeInspector
 
 let bundleIdentifierBase = Bundle.main
     .object(forInfoDictionaryKey: "BUNDLE_IDENTIFIER_BASE") as! String
@@ -31,12 +32,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if ProcessInfo.processInfo.environment["IS_UNIT_TEST"] == "YES" { return }
         _ = GraphicalUserInterfaceController.shared
         _ = RealtimeSuggestionController.shared
+        _ = XcodeInspector.shared
+        AXIsProcessTrustedWithOptions([
+            kAXTrustedCheckOptionPrompt.takeRetainedValue() as NSString: true,
+        ] as CFDictionary)
         setupQuitOnUpdate()
         setupQuitOnUserTerminated()
         xpcListener = setupXPCListener()
         Logger.service.info("XPC Service started.")
         NSApp.setActivationPolicy(.accessory)
         buildStatusBarMenu()
+        DependencyUpdater().update()
         Task {
             do {
                 try await ServiceUpdateMigrator().migrate()
@@ -100,7 +106,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc func quit() {
-        exit(0)
+        Task { @MainActor in
+            await scheduledCleaner.closeAllChildProcesses()
+            exit(0)
+        }
     }
 
     @objc func openCopilotForXcode() {
@@ -143,7 +152,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 Logger.service.info("Extension Service will quit.")
                 #if DEBUG
                 #else
-                exit(0)
+                quit()
                 #endif
             }
         }
@@ -167,7 +176,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 if NSWorkspace.shared.runningApplications.contains(where: \.isUserOfService) {
                     continue
                 }
-                exit(0)
+                quit()
             }
         }
     }

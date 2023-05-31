@@ -102,7 +102,7 @@ The app can provide real-time code suggestions based on the files you have opene
 
 If you're working on a company project and don't want the suggestion feature to be triggered, you can globally disable it and choose to enable it only for specific projects. 
 
-Whenever you stop typing for a few milliseconds, the app will automatically fetch suggestions for you, you can cancel this by clicking the mouse, or pressing **Escape** or the **arrow keys**.
+Whenever your code is updated, the app will automatically fetch suggestions for you, you can cancel this by pressing **Escape**.
 
 *: If a file is already open before the helper app launches, you will need to switch to those files in order to send the open file notification. 
 
@@ -113,9 +113,8 @@ Whenever you stop typing for a few milliseconds, the app will automatically fetc
 - Previous Suggestion: If there is more than one suggestion, switch to the previous one.
 - Accept Suggestion: Add the suggestion to the code.
 - Reject Suggestion: Remove the suggestion comments.
-- Toggle Real-time Suggestions: When turn on, Copilot will auto-insert suggestion comments to your code while editing.
-- Real-time Suggestions: Call only by Codeium for Xcode. When suggestions are successfully fetched, Copilot for Xcode will run this command to present the suggestions.
 - Prefetch Suggestions: Call only by Codeium for Xcode. In the background, Codeium for Xcode will occasionally run this command to prefetch real-time suggestions.
+- Real-time Suggestions: Call only by Codeium for Xcode. When suggestions are successfully fetched, Copilot for Xcode will run this command to present the suggestions.
 
 ## Key Bindings
 
@@ -130,8 +129,6 @@ A [recommended setup](https://github.com/intitni/CopilotForXcode/issues/14) that
 | Reject Suggestion | `⌥{` |
 | Next Suggestion | `⌥>` |
 | Previous Suggestion | `⌥<` |
-| Chat with Selection | `⌥"` |
-| Explain Selection | `⌥\|` |
 
 Essentially using `⌥⇧` as the "access" key combination for all bindings.
 
@@ -145,4 +142,4 @@ Another convenient method to access commands is by using the `⇧⌘/` shortcut 
 
 ## License 
 
-MIT.
+Please check [LICENSE](LICENSE) for details.
