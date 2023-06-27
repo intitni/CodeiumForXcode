@@ -13,7 +13,9 @@ extension LaunchAgentManager {
                 .appendingPathComponent(
                     "CodeiumForXcodeExtensionService.app/Contents/MacOS/CodeiumForXcodeExtensionService"
                 )
-                .path
+                .path,
+            bundleIdentifier: Bundle.main
+                .object(forInfoDictionaryKey: "BUNDLE_IDENTIFIER_BASE") as! String
         )
     }
 }

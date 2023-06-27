@@ -4,14 +4,12 @@ import GPTEncoder
 import Preferences
 
 public protocol ChatGPTServiceType: ObservableObject {
-    var isReceivingMessage: Bool { get async }
     var history: [ChatMessage] { get async }
     func send(content: String, summary: String?) async throws -> AsyncThrowingStream<String, Error>
     func stopReceivingMessage() async
     func clearHistory() async
     func mutateSystemPrompt(_ newPrompt: String) async
     func mutateHistory(_ mutate: (inout [ChatMessage]) -> Void) async
-    func markReceivingMessage(_ receiving: Bool) async
 }
 
 public enum ChatGPTServiceError: Error, LocalizedError {
@@ -105,10 +103,7 @@ public actor ChatGPTService: ChatGPTServiceType {
         didSet { objectWillChange.send() }
     }
 
-    public internal(set) var isReceivingMessage = false {
-        didSet { objectWillChange.send() }
-    }
-
+    var stop: [String]
     var uuidGenerator: () -> String = { UUID().uuidString }
     var cancelTask: Cancellable?
     var buildCompletionStreamAPI: CompletionStreamAPIBuilder = OpenAICompletionStreamAPI.init
@@ -117,10 +112,12 @@ public actor ChatGPTService: ChatGPTServiceType {
     public init(
         systemPrompt: String = "",
         temperature: Double? = nil,
+        stop: [String] = [],
         designatedProvider: ChatFeatureProvider? = nil
     ) {
         self.systemPrompt = systemPrompt
         self.temperature = temperature
+        self.stop = stop
         self.designatedProvider = designatedProvider
     }
 
@@ -128,15 +125,17 @@ public actor ChatGPTService: ChatGPTServiceType {
         content: String,
         summary: String? = nil
     ) async throws -> AsyncThrowingStream<String, Error> {
-        guard !isReceivingMessage else { throw CancellationError() }
         guard let url = URL(string: endpoint) else { throw ChatGPTServiceError.endpointIncorrect }
-        let newMessage = ChatMessage(
-            id: uuidGenerator(),
-            role: .user,
-            content: content,
-            summary: summary
-        )
-        history.append(newMessage)
+        
+        if !content.isEmpty || summary != nil {
+            let newMessage = ChatMessage(
+                id: uuidGenerator(),
+                role: .user,
+                content: content,
+                summary: summary
+            )
+            history.append(newMessage)
+        }
 
         let (messages, remainingTokens) = combineHistoryWithSystemPrompt()
 
@@ -145,10 +144,9 @@ public actor ChatGPTService: ChatGPTServiceType {
             messages: messages,
             temperature: temperature ?? defaultTemperature,
             stream: true,
+            stop: stop.isEmpty ? nil : stop,
             max_tokens: maxTokenForReply(model: model, remainingTokens: remainingTokens)
         )
-
-        isReceivingMessage = true
 
         let api = buildCompletionStreamAPI(
             apiKey,
@@ -161,10 +159,6 @@ public actor ChatGPTService: ChatGPTServiceType {
             Task {
                 do {
                     let (trunks, cancel) = try await api()
-                    guard isReceivingMessage else {
-                        continuation.finish()
-                        return
-                    }
                     cancelTask = cancel
                     for try await trunk in trunks {
                         guard let delta = trunk.choices.first?.delta else { continue }
@@ -192,19 +186,15 @@ public actor ChatGPTService: ChatGPTServiceType {
                     }
 
                     continuation.finish()
-                    isReceivingMessage = false
                 } catch let error as CancellationError {
-                    isReceivingMessage = false
                     continuation.finish(throwing: error)
                 } catch let error as NSError where error.code == NSURLErrorCancelled {
-                    isReceivingMessage = false
                     continuation.finish(throwing: error)
                 } catch {
                     history.append(.init(
                         role: .assistant,
                         content: error.localizedDescription
                     ))
-                    isReceivingMessage = false
                     continuation.finish(throwing: error)
                 }
             }
@@ -215,15 +205,17 @@ public actor ChatGPTService: ChatGPTServiceType {
         content: String,
         summary: String? = nil
     ) async throws -> String? {
-        guard !isReceivingMessage else { throw CancellationError() }
         guard let url = URL(string: endpoint) else { throw ChatGPTServiceError.endpointIncorrect }
-        let newMessage = ChatMessage(
-            id: uuidGenerator(),
-            role: .user,
-            content: content,
-            summary: summary
-        )
-        history.append(newMessage)
+        
+        if !content.isEmpty || summary != nil {
+            let newMessage = ChatMessage(
+                id: uuidGenerator(),
+                role: .user,
+                content: content,
+                summary: summary
+            )
+            history.append(newMessage)
+        }
 
         let (messages, remainingTokens) = combineHistoryWithSystemPrompt()
 
@@ -232,11 +224,9 @@ public actor ChatGPTService: ChatGPTServiceType {
             messages: messages,
             temperature: temperature ?? defaultTemperature,
             stream: true,
+            stop: stop.isEmpty ? nil : stop,
             max_tokens: maxTokenForReply(model: model, remainingTokens: remainingTokens)
         )
-
-        isReceivingMessage = true
-        defer { isReceivingMessage = false }
 
         let api = buildCompletionAPI(
             apiKey,
@@ -262,7 +252,6 @@ public actor ChatGPTService: ChatGPTServiceType {
     public func stopReceivingMessage() {
         cancelTask?()
         cancelTask = nil
-        isReceivingMessage = false
     }
 
     public func clearHistory() {
@@ -276,10 +265,6 @@ public actor ChatGPTService: ChatGPTServiceType {
 
     public func mutateHistory(_ mutate: (inout [ChatMessage]) -> Void) async {
         mutate(&history)
-    }
-
-    public func markReceivingMessage(_ receiving: Bool) {
-        isReceivingMessage = receiving
     }
 }
 
@@ -314,7 +299,9 @@ extension ChatGPTService {
             all.append(.init(role: message.role, content: message.content))
         }
 
-        all.append(.init(role: .system, content: systemPrompt))
+        if !systemPrompt.isEmpty {
+            all.append(.init(role: .system, content: systemPrompt))
+        }
         return (all.reversed(), max(minimumReplyTokens, maxTokens - allTokensCount))
     }
 }

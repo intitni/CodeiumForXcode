@@ -19,7 +19,7 @@ final class WidgetViewModel: ObservableObject {
         let deadline = date.timeIntervalSince1970 + 20
         isProcessingCounters.append(IsProcessingCounter(expirationDate: deadline))
         isProcessing = true
-        
+
         cleanupIsProcessingCounterTask?.cancel()
         cleanupIsProcessingCounterTask = Task { [weak self] in
             try await Task.sleep(nanoseconds: 20 * 1_000_000_000)
@@ -47,8 +47,10 @@ final class WidgetViewModel: ObservableObject {
 
 struct WidgetView: View {
     @ObservedObject var viewModel: WidgetViewModel
-    @ObservedObject var panelViewModel: SuggestionPanelViewModel
+    @ObservedObject var panelViewModel: SharedPanelViewModel
     @ObservedObject var chatWindowViewModel: ChatWindowViewModel
+    @ObservedObject var sharedPanelDisplayController: SharedPanelDisplayController
+    @ObservedObject var suggestionPanelDisplayController: SuggestionPanelDisplayController
     @State var isHovering: Bool = false
     @State var processingProgress: Double = 0
     var onOpenChatClicked: () -> Void = {}
@@ -59,13 +61,14 @@ struct WidgetView: View {
             .onTapGesture {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     let wasDisplayed = {
-                        if panelViewModel.isPanelDisplayed,
+                        if (sharedPanelDisplayController.isPanelDisplayed || suggestionPanelDisplayController.isPanelDisplayed),
                            panelViewModel.content != nil { return true }
                         if chatWindowViewModel.isPanelDisplayed,
                            chatWindowViewModel.chat != nil { return true }
                         return false
                     }()
-                    panelViewModel.isPanelDisplayed = !wasDisplayed
+                    sharedPanelDisplayController.isPanelDisplayed = !wasDisplayed
+                    suggestionPanelDisplayController.isPanelDisplayed = !wasDisplayed
                     chatWindowViewModel.isPanelDisplayed = !wasDisplayed
                     let isDisplayed = !wasDisplayed
 
@@ -105,6 +108,7 @@ struct WidgetView: View {
                             .scaleEffect(x: scale, y: scale)
                             .opacity(!empty || viewModel.isProcessing ? 1 : 0)
                             .animation(
+                                featureFlag: \.animationCCrashSuggestion,
                                 .easeInOut(duration: 1).repeatForever(autoreverses: true),
                                 value: processingProgress
                             )
@@ -117,7 +121,11 @@ struct WidgetView: View {
                             .padding(minimumLineWidth / 2)
                             .scaleEffect(x: scale, y: scale)
                             .opacity(!empty || viewModel.isProcessing ? 1 : 0)
-                            .animation(.easeInOut(duration: 1), value: processingProgress)
+                            .animation(
+                                featureFlag: \.animationCCrashSuggestion,
+                                .easeInOut(duration: 1),
+                                value: processingProgress
+                            )
                     }
                 }
             }
@@ -156,7 +164,6 @@ struct WidgetView: View {
 struct WidgetContextMenu: View {
     @AppStorage(\.useGlobalChat) var useGlobalChat
     @AppStorage(\.realtimeSuggestionToggle) var realtimeSuggestionToggle
-    @AppStorage(\.acceptSuggestionWithAccessibilityAPI) var acceptSuggestionWithAccessibilityAPI
     @AppStorage(\.hideCommonPrecedingSpacesInSuggestion) var hideCommonPrecedingSpacesInSuggestion
     @AppStorage(\.disableSuggestionFeatureGlobally) var disableSuggestionFeatureGlobally
     @AppStorage(\.suggestionFeatureEnabledProjectList) var suggestionFeatureEnabledProjectList
@@ -221,15 +228,6 @@ struct WidgetContextMenu: View {
                         Image(systemName: "checkmark")
                     }
                 }
-
-                Button(action: {
-                    acceptSuggestionWithAccessibilityAPI.toggle()
-                }, label: {
-                    Text("Accept Suggestion with Accessibility API")
-                    if acceptSuggestionWithAccessibilityAPI {
-                        Image(systemName: "checkmark")
-                    }
-                })
 
                 Button(action: {
                     hideCommonPrecedingSpacesInSuggestion.toggle()
@@ -337,6 +335,8 @@ struct WidgetView_Preview: PreviewProvider {
                 viewModel: .init(isProcessing: false),
                 panelViewModel: .init(),
                 chatWindowViewModel: .init(),
+                sharedPanelDisplayController: .init(),
+                suggestionPanelDisplayController: .init(),
                 isHovering: false
             )
 
@@ -344,6 +344,8 @@ struct WidgetView_Preview: PreviewProvider {
                 viewModel: .init(isProcessing: false),
                 panelViewModel: .init(),
                 chatWindowViewModel: .init(),
+                sharedPanelDisplayController: .init(),
+                suggestionPanelDisplayController: .init(),
                 isHovering: true
             )
 
@@ -351,6 +353,8 @@ struct WidgetView_Preview: PreviewProvider {
                 viewModel: .init(isProcessing: true),
                 panelViewModel: .init(),
                 chatWindowViewModel: .init(),
+                sharedPanelDisplayController: .init(),
+                suggestionPanelDisplayController: .init(),
                 isHovering: false
             )
 
@@ -365,6 +369,8 @@ struct WidgetView_Preview: PreviewProvider {
                     ))
                 ),
                 chatWindowViewModel: .init(),
+                sharedPanelDisplayController: .init(),
+                suggestionPanelDisplayController: .init(),
                 isHovering: false
             )
         }

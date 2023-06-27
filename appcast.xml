@@ -4,6 +4,18 @@
     <title>Codeium for Xcode</title>
 
     <item>
+      <title>0.19.2</title>
+      <pubDate>Tue, 27 Jun 2023 16:52:15 +0800</pubDate>
+      <sparkle:version>192</sparkle:version>
+      <sparkle:shortVersionString>0.19.2</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>12.0</sparkle:minimumSystemVersion>
+      <sparkle:releaseNotesLink>
+        https://github.com/intitni/CodeiumForXcode/releases/tag/codeium%2F0.19.2
+      </sparkle:releaseNotesLink>
+      <enclosure url="https://github.com/intitni/CodeiumForXcode/releases/download/codeium%2F0.19.2/Codeium.for.Xcode.app.zip" length="16148594" type="application/octet-stream" sparkle:edSignature="/b9Ek1aU0WEqKrRp7p9iAvxAy3FWvArhNfBZcYMPosDa1CGShfu1Hv5LjCTvoaAM77LnHq2MTt8pj0EkDa+sBA=="/>
+    </item>
+
+    <item>
       <title>0.17.1</title>
       <pubDate>Wed, 31 May 2023 14:04:40 +0800</pubDate>
       <sparkle:version>171</sparkle:version>
@@ -204,10 +216,7 @@
       <sparkle:releaseNotesLink>
         https://github.com/intitni/CopilotForXcode/releases/tag/0.11.0
       </sparkle:releaseNotesLink>
-      <enclosure
-        url="https://github.com/intitni/CopilotForXcode/releases/download/0.11.0/Copilot.for.Xcode.app.zip"
-        length="19040986" type="application/octet-stream"
-        sparkle:edSignature="VqjW63XWJdCnQYlRzOqQrKSNVp5E4S2GswlpbOh4aUW2grgget1BCcHUFKQqsc45gbGM7U79SVN236ZNjdL2CA==" />
+      <enclosure url="https://github.com/intitni/CopilotForXcode/releases/download/0.11.0/Copilot.for.Xcode.app.zip" length="19040986" type="application/octet-stream" sparkle:edSignature="VqjW63XWJdCnQYlRzOqQrKSNVp5E4S2GswlpbOh4aUW2grgget1BCcHUFKQqsc45gbGM7U79SVN236ZNjdL2CA==" />
     </item>
 
     <item>
@@ -219,10 +228,7 @@
       <sparkle:releaseNotesLink>
         https://github.com/intitni/CopilotForXcode/releases/tag/0.10.0
       </sparkle:releaseNotesLink>
-      <enclosure
-        url="https://github.com/intitni/CopilotForXcode/releases/download/0.10.0/Copilot.for.Xcode.app.zip"
-        length="19323141" type="application/octet-stream"
-        sparkle:edSignature="ZZaFNR57G+EzHtYM3+xCJRSSMZXX1Leq2HKFaZBpD/lUW38z6oB4D561toB4r5M8nelfkNEJ3dLPgIUYl1qNBw==" />
+      <enclosure url="https://github.com/intitni/CopilotForXcode/releases/download/0.10.0/Copilot.for.Xcode.app.zip" length="19323141" type="application/octet-stream" sparkle:edSignature="ZZaFNR57G+EzHtYM3+xCJRSSMZXX1Leq2HKFaZBpD/lUW38z6oB4D561toB4r5M8nelfkNEJ3dLPgIUYl1qNBw==" />
     </item>
 
     <item>
@@ -234,11 +240,7 @@
       <sparkle:releaseNotesLink>
         https://github.com/intitni/CopilotForXcode/releases/tag/0.9.0
       </sparkle:releaseNotesLink>
-      <enclosure
-        url="https://github.com/intitni/CopilotForXcode/releases/download/0.9.0/Copilot.for.Xcode.app.zip"
-        sparkle:edSignature="VMbUoqNEeVUMhJVkz+yVljTC7m0PxQFxv1uDJnXB1AUwoe1JMTMR4kBiriul+UWMoXTeSB6Bo+1TTJDOBbToDA=="
-        length="19202555"
-        type="application/octet-stream" />
+      <enclosure url="https://github.com/intitni/CopilotForXcode/releases/download/0.9.0/Copilot.for.Xcode.app.zip" sparkle:edSignature="VMbUoqNEeVUMhJVkz+yVljTC7m0PxQFxv1uDJnXB1AUwoe1JMTMR4kBiriul+UWMoXTeSB6Bo+1TTJDOBbToDA==" length="19202555" type="application/octet-stream" />
     </item>
   </channel>
 </rss>

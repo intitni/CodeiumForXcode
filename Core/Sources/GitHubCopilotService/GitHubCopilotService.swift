@@ -127,7 +127,7 @@ public class GitHubCopilotBaseService {
                 }()
             }
             let localServer = CopilotLocalProcessServer(executionParameters: executionParams)
-            
+
             localServer.logMessages = UserDefaults.shared.value(for: \.gitHubCopilotVerboseLog)
             localServer.notificationHandler = { _, respond in
                 respond(.timeout)
@@ -162,10 +162,16 @@ public class GitHubCopilotBaseService {
 
             return (server, localServer)
         }()
-        
+
         self.server = server
-        self.localProcessServer = localServer
+        localProcessServer = localServer
+        
+        Task {
+            try await server.sendRequest(GitHubCopilotRequest.SetEditorInfo())
+        }
     }
+    
+    
 
     public static func createFoldersIfNeeded() throws -> (
         applicationSupportURL: URL,
@@ -211,9 +217,6 @@ public final class GitHubCopilotAuthService: GitHubCopilotBaseService,
     public init() throws {
         let home = FileManager.default.homeDirectoryForCurrentUser
         try super.init(projectRootURL: home)
-        Task {
-            try? await server.sendRequest(GitHubCopilotRequest.SetEditorInfo())
-        }
     }
 
     public func checkStatus() async throws -> GitHubCopilotAccountStatus {
@@ -242,6 +245,12 @@ public final class GitHubCopilotAuthService: GitHubCopilotBaseService,
     }
 }
 
+@globalActor public enum GitHubCopilotSuggestionActor {
+    public actor TheActor {}
+    public static let shared = TheActor()
+}
+
+@GitHubCopilotSuggestionActor
 public final class GitHubCopilotSuggestionService: GitHubCopilotBaseService,
     GitHubCopilotSuggestionServiceType
 {
@@ -313,7 +322,7 @@ public final class GitHubCopilotSuggestionService: GitHubCopilotBaseService,
 
         return try await task.value
     }
-    
+
     public func cancelRequest() async {
         await localProcessServer?.cancelOngoingTasks()
     }
@@ -380,7 +389,7 @@ public final class GitHubCopilotSuggestionService: GitHubCopilotBaseService,
 //        Logger.service.debug("Close \(uri)")
         try await server.sendNotification(.didCloseTextDocument(.init(uri: uri)))
     }
-    
+
     public func terminate() async {
         // automatically handled
     }
