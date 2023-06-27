@@ -1,47 +1,36 @@
 import ChatContextCollector
-import ChatPlugins
+import ChatPlugin
 import Combine
 import Foundation
 import OpenAIService
 
-let defaultSystemPrompt = """
-You are an AI programming assistant.
-Your reply should be concise, clear, informative and logical.
-You MUST reply in the format of markdown.
-You MUST embed every code you provide in a markdown code block.
-You MUST add the programming language name at the start of the markdown code block.
-If you are asked to help perform a task, you MUST think step-by-step, then describe each step concisely.
-If you are asked to explain code, you MUST explain it step-by-step in a ordered list.
-Make your answer short and structured.
-"""
-
 public final class ChatService: ObservableObject {
     public let chatGPTService: any ChatGPTServiceType
+    public var allPluginCommands: [String] { allPlugins.map { $0.command } }
     let pluginController: ChatPluginController
     let contextController: DynamicContextController
     var cancellable = Set<AnyCancellable>()
-    @Published public internal(set) var systemPrompt = defaultSystemPrompt
+    @Published public internal(set) var isReceivingMessage = false
+    @Published public internal(set) var systemPrompt = UserDefaults.shared
+        .value(for: \.defaultChatSystemPrompt)
     @Published public internal(set) var extraSystemPrompt = ""
 
     public init<T: ChatGPTServiceType>(chatGPTService: T) {
         self.chatGPTService = chatGPTService
-        pluginController = ChatPluginController(
-            chatGPTService: chatGPTService,
-            plugins:
-            TerminalChatPlugin.self,
-            AITerminalChatPlugin.self
-        )
+        pluginController = ChatPluginController(chatGPTService: chatGPTService, plugins: allPlugins)
         contextController = DynamicContextController(
             chatGPTService: chatGPTService,
             contextCollectors: ActiveDocumentChatContextCollector()
         )
 
+        pluginController.chatService = self
         chatGPTService.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
         }.store(in: &cancellable)
     }
 
     public func send(content: String) async throws {
+        guard !isReceivingMessage else { throw CancellationError() }
         let handledInPlugin = try await pluginController.handleContent(content)
         if handledInPlugin { return }
         try await contextController.updatePromptToMatchContent(systemPrompt: """
@@ -49,21 +38,30 @@ public final class ChatService: ObservableObject {
         \(extraSystemPrompt)
         """, content: content)
 
-        _ = try await chatGPTService.send(content: content, summary: nil)
+        let stream = try await chatGPTService.send(content: content, summary: nil)
+        isReceivingMessage = true
+        do {
+            for try await _ in stream {}
+            isReceivingMessage = false
+        } catch {
+            isReceivingMessage = false
+        }
     }
 
     public func stopReceivingMessage() async {
         await pluginController.stopResponding()
         await chatGPTService.stopReceivingMessage()
+        isReceivingMessage = false
     }
 
     public func clearHistory() async {
         await pluginController.cancel()
         await chatGPTService.clearHistory()
+        isReceivingMessage = false
     }
 
     public func resetPrompt() async {
-        systemPrompt = defaultSystemPrompt
+        systemPrompt = UserDefaults.shared.value(for: \.defaultChatSystemPrompt)
         extraSystemPrompt = ""
     }
 
@@ -94,7 +92,7 @@ public final class ChatService: ObservableObject {
 
     /// Setting it to `nil` to reset the system prompt
     public func mutateSystemPrompt(_ newPrompt: String?) {
-        systemPrompt = newPrompt ?? defaultSystemPrompt
+        systemPrompt = newPrompt ?? UserDefaults.shared.value(for: \.defaultChatSystemPrompt)
     }
 
     public func mutateExtraSystemPrompt(_ newPrompt: String) {

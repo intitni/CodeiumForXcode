@@ -1,12 +1,13 @@
 import AppKit
 import ApplicationServices
 import Foundation
+import Logger
 
 public final class AXNotificationStream: AsyncSequence {
     public typealias Stream = AsyncStream<Element>
     public typealias Continuation = Stream.Continuation
     public typealias AsyncIterator = Stream.AsyncIterator
-    public typealias Element = (name: String, info: CFDictionary)
+    public typealias Element = (name: String, element: AXUIElement, info: CFDictionary)
 
     private var continuation: Continuation
     private let stream: Stream
@@ -18,7 +19,7 @@ public final class AXNotificationStream: AsyncSequence {
     deinit {
         continuation.finish()
     }
-    
+
     public convenience init(
         app: NSRunningApplication,
         element: AXUIElement? = nil,
@@ -48,7 +49,7 @@ public final class AXNotificationStream: AsyncSequence {
         ) {
             guard let pointer = pointer?.assumingMemoryBound(to: Continuation.self)
             else { return }
-            pointer.pointee.yield((notificationName as String, userInfo))
+            pointer.pointee.yield((notificationName as String, element, userInfo))
         }
 
         _ = AXObserverCreateWithInfoCallback(
@@ -72,13 +73,56 @@ public final class AXNotificationStream: AsyncSequence {
                 .commonModes
             )
         }
-        for name in notificationNames {
-            AXObserverAddNotification(observer, observingElement, name as CFString, &continuation)
+
+        Task { [weak self] in
+            CFRunLoopAddSource(
+                CFRunLoopGetMain(),
+                AXObserverGetRunLoopSource(observer),
+                .commonModes
+            )
+            var pendingRegistrationNames = Set(notificationNames)
+            var retry = 0
+            while !pendingRegistrationNames.isEmpty, retry < 100 {
+                guard let self else { return }
+                retry += 1
+                for name in notificationNames {
+                    let e = AXObserverAddNotification(
+                        observer,
+                        observingElement,
+                        name as CFString,
+                        &self.continuation
+                    )
+                    switch e {
+                    case .success:
+                        pendingRegistrationNames.remove(name)
+                    case .actionUnsupported:
+                        Logger.service.error("AXObserver: Action unsupported: \(name)")
+                        pendingRegistrationNames.remove(name)
+                    case .apiDisabled:
+                        Logger.service.error("AXObserver: Accessibility API disabled, will try again later")
+                        retry -= 1
+                    case .invalidUIElement:
+                        Logger.service.error("AXObserver: Invalid UI element")
+                        pendingRegistrationNames.remove(name)
+                    case .invalidUIElementObserver:
+                        Logger.service.error("AXObserver: Invalid UI element observer")
+                        pendingRegistrationNames.remove(name)
+                    case .cannotComplete:
+                        Logger.service
+                            .error("AXObserver: Failed to observe \(name), will try again later")
+                    case .notificationUnsupported:
+                        Logger.service.error("AXObserver: Notification unsupported: \(name)")
+                        pendingRegistrationNames.remove(name)
+                    case .notificationAlreadyRegistered:
+                        pendingRegistrationNames.remove(name)
+                    default:
+                        Logger.service
+                            .error("AXObserver: Unrecognized error \(e) when registering \(name), will try again later")
+                    }
+                }
+                try await Task.sleep(nanoseconds: 1_500_000_000)
+            }
         }
-        CFRunLoopAddSource(
-            CFRunLoopGetMain(),
-            AXObserverGetRunLoopSource(observer),
-            .commonModes
-        )
     }
 }
+
