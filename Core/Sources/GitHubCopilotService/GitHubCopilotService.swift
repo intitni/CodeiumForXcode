@@ -23,7 +23,8 @@ public protocol GitHubCopilotSuggestionServiceType {
         tabSize: Int,
         indentSize: Int,
         usesTabsForIndentation: Bool,
-        ignoreSpaceOnlySuggestions: Bool
+        ignoreSpaceOnlySuggestions: Bool,
+        ignoreTrailingNewLinesAndSpaces: Bool
     ) async throws -> [CodeSuggestion]
     func notifyAccepted(_ completion: CodeSuggestion) async
     func notifyRejected(_ completions: [CodeSuggestion]) async
@@ -165,13 +166,11 @@ public class GitHubCopilotBaseService {
 
         self.server = server
         localProcessServer = localServer
-        
+
         Task {
             try await server.sendRequest(GitHubCopilotRequest.SetEditorInfo())
         }
     }
-    
-    
 
     public static func createFoldersIfNeeded() throws -> (
         applicationSupportURL: URL,
@@ -271,7 +270,8 @@ public final class GitHubCopilotSuggestionService: GitHubCopilotBaseService,
         tabSize: Int,
         indentSize: Int,
         usesTabsForIndentation: Bool,
-        ignoreSpaceOnlySuggestions: Bool
+        ignoreSpaceOnlySuggestions: Bool,
+        ignoreTrailingNewLinesAndSpaces: Bool
     ) async throws -> [CodeSuggestion] {
         let languageId = languageIdentifierFromFileURL(fileURL)
 
@@ -313,6 +313,18 @@ public final class GitHubCopilotSuggestionService: GitHubCopilotBaseService,
                         return !completion.text.allSatisfy { $0.isWhitespace || $0.isNewline }
                     }
                     return true
+                }
+                .map {
+                    if ignoreTrailingNewLinesAndSpaces {
+                        var updated = $0
+                        var text = updated.text[...]
+                        while let last = text.last, last.isNewline || last.isWhitespace {
+                            text = text.dropLast(1)
+                        }
+                        updated.text = String(text)
+                        return updated
+                    }
+                    return $0
                 }
             try Task.checkCancellation()
             return completions

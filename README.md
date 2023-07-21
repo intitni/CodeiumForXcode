@@ -133,7 +133,7 @@ Whenever your code is updated, the app will automatically fetch suggestions for 
 - Prefetch Suggestions: Call only by Codeium for Xcode. In the background, Codeium for Xcode will occasionally run this command to prefetch real-time suggestions.
 - Real-time Suggestions: Call only by Codeium for Xcode. When suggestions are successfully fetched, Copilot for Xcode will run this command to present the suggestions.
 
-For Open Chat and Custom Chat commands, you can use the following template arguments:
+For Send Message, Single Round Dialog and Custom Chat commands, you can use the following template arguments:
 
 | Argument                      | Description                                    |
 | ----------------------------- | ---------------------------------------------- |

@@ -23,6 +23,8 @@ import XPCShared
     }
 
     Environment.triggerAction = { _ in }
+    
+    Environment.guessProjectRootURLForFile = { $0 }
 }
 
 func completion(text: String, range: CursorRange, uuid: String = "") -> CodeSuggestion {
@@ -69,7 +71,8 @@ class MockSuggestionService: GitHubCopilotSuggestionServiceType {
         tabSize: Int,
         indentSize: Int,
         usesTabsForIndentation: Bool,
-        ignoreSpaceOnlySuggestions: Bool
+        ignoreSpaceOnlySuggestions: Bool,
+        ignoreTrailingNewLinesAndSpaces: Bool
     ) async throws -> [SuggestionModel.CodeSuggestion] {
         completions
     }
