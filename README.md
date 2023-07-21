@@ -1,6 +1,6 @@
 # Codeium for Xcode <img alt="Logo" src="/AppIcon.png" align="right" height="50">
 
-Codeium for Xcode is a fork of [Copilot for Xcode](https://github.com/intitni/CopilotForXcode.git) that exposes the features supported by Codeium.
+Codeium for Xcode is a fork of [Copilot for Xcode](https://github.com/intitni/CopilotForXcode.git) that exposes only the features supported by Codeium.
 
 If you have any trouble using the app, please open an issue at [https://github.com/intitni/CopilotForXcode/issues](https://github.com/intitni/CopilotForXcode/issues).
 
