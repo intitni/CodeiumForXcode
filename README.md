@@ -92,17 +92,6 @@ Essentially using `⌥⇧` as the "access" key combination for all bindings.
 
 Another convenient method to access commands is by using the `⇧⌘/` shortcut to search for a command in the menu bar.
 
-### Setting Up GitHub Copilot
-
-1. In the host app, switch to the service tab and click on GitHub Copilot to access your GitHub Copilot account settings.
-2. Click "Install" to install the language server.
-3. Optionally setup the path to Node. The default value is just `node`, Copilot for Xcode.app will try to find the Node from the PATH available in a login shell. If your Node is installed somewhere else, you can run `which node` from terminal to get the path.
-4. Click "Sign In", and you will be directed to a verification website provided by GitHub, and a user code will be pasted into your clipboard.
-5. After signing in, go back to the app and click "Confirm Sign-in" to finish.
-6. Go to "Feature - Suggestion" and update the feature provider to "GitHub Copilot".
-
-The installed language server is located at `~/Library/Application Support/com.intii.CopilotForXcode/GitHub Copilot/executable/`.
-
 ### Setting Up Codeium
 
 1. In the host app, switch to the service tab and click Codeium to access the Codeium account settings.
