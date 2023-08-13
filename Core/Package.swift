@@ -16,13 +16,11 @@ let package = Package(
                 "LaunchAgentManager",
                 "UpdateChecker",
                 "UserDefaultsObserver",
-                "XcodeInspector",
             ]
         ),
         .library(
             name: "Client",
             targets: [
-                "SuggestionModel",
                 "Client",
                 "XPCShared",
             ]
@@ -31,7 +29,6 @@ let package = Package(
             name: "HostApp",
             targets: [
                 "HostApp",
-                "SuggestionModel",
                 "GitHubCopilotService",
                 "Client",
                 "XPCShared",
@@ -42,25 +39,29 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../Tool"),
-        .package(url: "https://github.com/ChimeHQ/LanguageClient", from: "0.3.1"),
+        // TODO: Update LanguageClient some day.
+        .package(url: "https://github.com/ChimeHQ/LanguageClient", exact: "0.3.1"),
+        .package(url: "https://github.com/ChimeHQ/LanguageServerProtocol", exact: "0.8.0"),
         .package(url: "https://github.com/apple/swift-async-algorithms", from: "0.1.0"),
-        .package(url: "https://github.com/raspu/Highlightr", from: "2.1.0"),
-        .package(url: "https://github.com/JohnSundell/Splash", branch: "master"),
         .package(url: "https://github.com/gonzalezreal/swift-markdown-ui", from: "2.1.0"),
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.0.0"),
-        .package(url: "https://github.com/kishikawakatsumi/KeychainAccess", from: "4.2.2"),
-        .package(url: "https://github.com/pvieito/PythonKit.git", branch: "master"),
         .package(url: "https://github.com/pointfreeco/swift-parsing", from: "0.12.1"),
-    ],
+        .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "0.5.1"),
+        .package(
+            url: "https://github.com/pointfreeco/swift-composable-architecture",
+            from: "0.55.0"
+        ),
+        .package(url: "https://github.com/apple/swift-syntax.git", branch: "main"),
+    ].pro,
     targets: [
         // MARK: - Main
 
         .target(
             name: "Client",
             dependencies: [
-                "SuggestionModel",
                 "XPCShared",
                 "GitHubCopilotService",
+                .product(name: "SuggestionModel", package: "Tool"),
                 .product(name: "Logger", package: "Tool"),
                 .product(name: "Preferences", package: "Tool"),
             ]
@@ -68,27 +69,30 @@ let package = Package(
         .target(
             name: "Service",
             dependencies: [
-                "SuggestionModel",
                 "SuggestionService",
                 "GitHubCopilotService",
                 "XPCShared",
                 "CGEventObserver",
                 "DisplayLink",
-                "ActiveApplicationMonitor",
-                "AXNotificationStream",
-                "Environment",
                 "SuggestionWidget",
-                "AXExtension",
                 "ChatService",
-                .product(name: "Logger", package: "Tool"),
                 "PromptToCodeService",
                 "ServiceUpdateMigration",
                 "UserDefaultsObserver",
+                "ChatGPTChatTab",
+                .product(name: "AppMonitoring", package: "Tool"),
+                .product(name: "Environment", package: "Tool"),
+                .product(name: "SuggestionModel", package: "Tool"),
+                .product(name: "ChatTab", package: "Tool"),
+                .product(name: "Logger", package: "Tool"),
                 .product(name: "OpenAIService", package: "Tool"),
                 .product(name: "Preferences", package: "Tool"),
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
-                .product(name: "PythonKit", package: "PythonKit"),
-            ]
+                .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+                .product(name: "Dependencies", package: "swift-dependencies"),
+            ].pro([
+                "ProChatTabs",
+            ])
         ),
         .testTarget(
             name: "ServiceTests",
@@ -98,15 +102,8 @@ let package = Package(
                 "GitHubCopilotService",
                 "SuggestionInjector",
                 "XPCShared",
-                "Environment",
-                .product(name: "Preferences", package: "Tool"),
-            ]
-        ),
-        .target(
-            name: "Environment",
-            dependencies: [
-                "ActiveApplicationMonitor",
-                "AXExtension",
+                .product(name: "SuggestionModel", package: "Tool"),
+                .product(name: "Environment", package: "Tool"),
                 .product(name: "Preferences", package: "Tool"),
             ]
         ),
@@ -119,33 +116,31 @@ let package = Package(
                 "Client",
                 "GitHubCopilotService",
                 "CodeiumService",
-                "SuggestionModel",
                 "LaunchAgentManager",
+                "PlusFeatureFlag",
+                .product(name: "Toast", package: "Tool"),
+                .product(name: "SuggestionModel", package: "Tool"),
+                .product(name: "MarkdownUI", package: "swift-markdown-ui"),
                 .product(name: "OpenAIService", package: "Tool"),
                 .product(name: "Preferences", package: "Tool"),
-            ]
+                .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+            ].pro([
+                "ProHostApp",
+            ])
         ),
 
         // MARK: - XPC Related
 
         .target(
             name: "XPCShared",
-            dependencies: ["SuggestionModel"]
+            dependencies: [.product(name: "SuggestionModel", package: "Tool")]
         ),
 
         // MARK: - Suggestion Service
 
         .target(
-            name: "SuggestionModel",
-            dependencies: ["LanguageClient"]
-        ),
-        .testTarget(
-            name: "SuggestionModelTests",
-            dependencies: ["SuggestionModel"]
-        ),
-        .target(
             name: "SuggestionInjector",
-            dependencies: ["SuggestionModel"]
+            dependencies: [.product(name: "SuggestionModel", package: "Tool")]
         ),
         .testTarget(
             name: "SuggestionInjectorTests",
@@ -162,9 +157,8 @@ let package = Package(
         .target(
             name: "PromptToCodeService",
             dependencies: [
-                "Environment",
-                "GitHubCopilotService",
-                "SuggestionModel",
+                .product(name: "SuggestionModel", package: "Tool"),
+                .product(name: "Environment", package: "Tool"),
                 .product(name: "OpenAIService", package: "Tool"),
             ]
         ),
@@ -177,35 +171,52 @@ let package = Package(
             dependencies: [
                 "ChatPlugin",
                 "ChatContextCollector",
-                "Environment",
-                "XcodeInspector",
 
                 // plugins
                 "MathChatPlugin",
                 "SearchChatPlugin",
                 "ShortcutChatPlugin",
 
+                // context collectors
+                "WebChatContextCollector",
+                "ActiveDocumentChatContextCollector",
+
+                .product(name: "AppMonitoring", package: "Tool"),
+                .product(name: "Environment", package: "Tool"),
+                .product(name: "Parsing", package: "swift-parsing"),
                 .product(name: "OpenAIService", package: "Tool"),
                 .product(name: "Preferences", package: "Tool"),
             ]
         ),
+        .testTarget(name: "ChatServiceTests", dependencies: ["ChatService"]),
         .target(
             name: "ChatPlugin",
             dependencies: [
-                "Environment",
+                .product(name: "Environment", package: "Tool"),
                 .product(name: "OpenAIService", package: "Tool"),
                 .product(name: "Terminal", package: "Tool"),
-                .product(name: "PythonKit", package: "PythonKit"),
             ]
         ),
         .target(
             name: "ChatContextCollector",
             dependencies: [
-                "Environment",
-                "SuggestionModel",
-                "XcodeInspector",
+                .product(name: "SuggestionModel", package: "Tool"),
+                .product(name: "AppMonitoring", package: "Tool"),
+                .product(name: "Environment", package: "Tool"),
                 .product(name: "OpenAIService", package: "Tool"),
                 .product(name: "Preferences", package: "Tool"),
+            ]
+        ),
+
+        .target(
+            name: "ChatGPTChatTab",
+            dependencies: [
+                "ChatService",
+                .product(name: "SharedUIComponents", package: "Tool"),
+                .product(name: "OpenAIService", package: "Tool"),
+                .product(name: "Logger", package: "Tool"),
+                .product(name: "ChatTab", package: "Tool"),
+                .product(name: "MarkdownUI", package: "swift-markdown-ui"),
             ]
         ),
 
@@ -214,28 +225,31 @@ let package = Package(
         .target(
             name: "SuggestionWidget",
             dependencies: [
-                "ActiveApplicationMonitor",
-                "AXNotificationStream",
-                "Environment",
-                "Highlightr",
-                "Splash",
+                "ChatGPTChatTab",
                 "UserDefaultsObserver",
-                "XcodeInspector",
+                .product(name: "SharedUIComponents", package: "Tool"),
+                .product(name: "AppMonitoring", package: "Tool"),
+                .product(name: "Environment", package: "Tool"),
+                .product(name: "ChatTab", package: "Tool"),
                 .product(name: "Logger", package: "Tool"),
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
                 .product(name: "MarkdownUI", package: "swift-markdown-ui"),
+                .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
             ]
         ),
         .testTarget(name: "SuggestionWidgetTests", dependencies: ["SuggestionWidget"]),
 
         // MARK: - Helpers
 
-        .target(name: "CGEventObserver"),
+        .target(
+            name: "CGEventObserver",
+            dependencies: [
+                .product(name: "Logger", package: "Tool"),
+            ]
+        ),
         .target(name: "FileChangeChecker"),
         .target(name: "LaunchAgentManager"),
         .target(name: "DisplayLink"),
-        .target(name: "ActiveApplicationMonitor"),
-        .target(name: "AXNotificationStream"),
         .target(
             name: "UpdateChecker",
             dependencies: [
@@ -243,7 +257,6 @@ let package = Package(
                 .product(name: "Logger", package: "Tool"),
             ]
         ),
-        .target(name: "AXExtension"),
         .target(
             name: "ServiceUpdateMigration",
             dependencies: [
@@ -253,15 +266,11 @@ let package = Package(
         ),
         .target(name: "UserDefaultsObserver"),
         .target(
-            name: "XcodeInspector",
+            name: "PlusFeatureFlag",
             dependencies: [
-                "AXExtension",
-                "SuggestionModel",
-                "Environment",
-                "AXNotificationStream",
-                .product(name: "Logger", package: "Tool"),
-                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
-            ]
+            ].pro([
+                "LicenseManagement"
+            ])
         ),
 
         // MARK: - GitHub Copilot
@@ -270,11 +279,12 @@ let package = Package(
             name: "GitHubCopilotService",
             dependencies: [
                 "LanguageClient",
-                "SuggestionModel",
                 "XPCShared",
+                .product(name: "SuggestionModel", package: "Tool"),
                 .product(name: "Logger", package: "Tool"),
                 .product(name: "Preferences", package: "Tool"),
                 .product(name: "Terminal", package: "Tool"),
+                .product(name: "LanguageServerProtocol", package: "LanguageServerProtocol"),
             ]
         ),
         .testTarget(
@@ -288,9 +298,9 @@ let package = Package(
             name: "CodeiumService",
             dependencies: [
                 "LanguageClient",
-                "SuggestionModel",
-                "KeychainAccess",
-                "XcodeInspector",
+                .product(name: "Keychain", package: "Tool"),
+                .product(name: "SuggestionModel", package: "Tool"),
+                .product(name: "AppMonitoring", package: "Tool"),
                 .product(name: "Preferences", package: "Tool"),
                 .product(name: "Terminal", package: "Tool"),
             ]
@@ -304,7 +314,6 @@ let package = Package(
                 "ChatPlugin",
                 .product(name: "OpenAIService", package: "Tool"),
                 .product(name: "LangChain", package: "Tool"),
-                .product(name: "PythonKit", package: "PythonKit"),
             ],
             path: "Sources/ChatPlugins/MathChatPlugin"
         ),
@@ -315,7 +324,7 @@ let package = Package(
                 "ChatPlugin",
                 .product(name: "OpenAIService", package: "Tool"),
                 .product(name: "LangChain", package: "Tool"),
-                .product(name: "PythonKit", package: "PythonKit"),
+                .product(name: "ExternalServices", package: "Tool"),
             ],
             path: "Sources/ChatPlugins/SearchChatPlugin"
         ),
@@ -329,6 +338,78 @@ let package = Package(
             ],
             path: "Sources/ChatPlugins/ShortcutChatPlugin"
         ),
+
+        // MAKR: - Chat Context Collector
+
+        .target(
+            name: "WebChatContextCollector",
+            dependencies: [
+                "ChatContextCollector",
+                .product(name: "LangChain", package: "Tool"),
+                .product(name: "OpenAIService", package: "Tool"),
+                .product(name: "ExternalServices", package: "Tool"),
+                .product(name: "Preferences", package: "Tool"),
+            ],
+            path: "Sources/ChatContextCollectors/WebChatContextCollector"
+        ),
+
+        .target(
+            name: "ActiveDocumentChatContextCollector",
+            dependencies: [
+                "ChatContextCollector",
+                .product(name: "LangChain", package: "Tool"),
+                .product(name: "OpenAIService", package: "Tool"),
+                .product(name: "Preferences", package: "Tool"),
+                .product(name: "ASTParser", package: "Tool"),
+                .product(name: "SwiftSyntax", package: "swift-syntax"),
+                .product(name: "SwiftParser", package: "swift-syntax"),
+            ],
+            path: "Sources/ChatContextCollectors/ActiveDocumentChatContextCollector"
+        ),
+
+        .testTarget(
+            name: "ActiveDocumentChatContextCollectorTests",
+            dependencies: ["ActiveDocumentChatContextCollector"]
+        ),
     ]
 )
+
+// MARK: - Pro
+
+extension [Target.Dependency] {
+    func pro(_ targetNames: [String]) -> [Target.Dependency] {
+        if isProIncluded() {
+            return self + targetNames.map { Target.Dependency.product(name: $0, package: "Pro") }
+        }
+        return self
+    }
+}
+
+extension [Package.Dependency] {
+    var pro: [Package.Dependency] {
+        if isProIncluded() {
+            return self + [.package(path: "../Pro")]
+        }
+        return self
+    }
+}
+
+import Foundation
+
+func isProIncluded(file: StaticString = #file) -> Bool {
+    let filePath = "\(file)"
+    let fileURL = URL(fileURLWithPath: filePath)
+    let rootURL = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let folderURL = rootURL.appendingPathComponent("Pro")
+    if !FileManager.default.fileExists(atPath: folderURL.path) {
+        return false
+    }
+    let packageManifestURL = folderURL.appendingPathComponent("Package.swift")
+    if !FileManager.default.fileExists(atPath: packageManifestURL.path) {
+        return false
+    }
+    return true
+}
 

@@ -1,5 +1,4 @@
 import Foundation
-import GitHubCopilotService
 import OpenAIService
 import Preferences
 import SuggestionModel
@@ -147,10 +146,20 @@ final class OpenAIPromptToCodeAPI: PromptToCodeAPI {
         ###
         """
 
-        let chatGPTService = ChatGPTService(systemPrompt: systemPrompt, temperature: 0.3)
+        let configuration =  UserPreferenceChatGPTConfiguration()
+            .overriding(.init(temperature: 0))
+        let memory = AutoManagedChatGPTMemory(
+            systemPrompt: systemPrompt,
+            configuration: configuration,
+            functionProvider: NoChatGPTFunctionProvider()
+        )
+        let chatGPTService = ChatGPTService(
+            memory: memory,
+            configuration: configuration
+        )
         service = chatGPTService
         if let firstMessage {
-            await chatGPTService.mutateHistory { history in
+            await memory.mutateHistory { history in
                 history.append(.init(role: .user, content: firstMessage))
             }
         }

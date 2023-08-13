@@ -1,5 +1,5 @@
-import SuggestionModel
 import Foundation
+import SuggestionModel
 
 let suggestionStart = "/*========== Copilot Suggestion"
 let suggestionEnd = "*///======== End of Copilot Suggestion"
@@ -141,8 +141,6 @@ public struct SuggestionInjector {
         let end = completion.range.end
         let suggestionContent = completion.text
 
-        let _ = start.line < content.endIndex ? content[start.line] : nil
-
         let firstRemovedLine = content[safe: start.line]
         let lastRemovedLine = content[safe: end.line]
         let startLine = max(0, start.line)
@@ -177,15 +175,52 @@ public struct SuggestionInjector {
         }
 
         // appending suffix text not in range if needed.
-        let cursorCol = toBeInserted[toBeInserted.endIndex - 1].count - 1
-        let skipAppendingDueToContinueTyping = {
-            guard let first = toBeInserted.first?.dropLast(1), !first.isEmpty else { return false }
-            let droppedLast = lastRemovedLine?.dropLast(1)
-            guard let droppedLast, !droppedLast.isEmpty else { return false }
-            return first.hasPrefix(droppedLast)
+        let leftoverCount: Int = {
+            let maxCount = lastRemovedLine?.count ?? 0
+            guard let first = toBeInserted.first?
+                .dropLast((toBeInserted.first?.hasSuffix("\n") ?? false) ? 1 : 0),
+                  !first.isEmpty else { return maxCount }
+            guard let last = toBeInserted.last?
+                .dropLast((toBeInserted.last?.hasSuffix("\n") ?? false) ? 1 : 0),
+                !last.isEmpty else { return maxCount }
+            let droppedLast = lastRemovedLine?
+                .dropLast((lastRemovedLine?.hasSuffix("\n") ?? false) ? 1 : 0)
+            guard let droppedLast, !droppedLast.isEmpty else { return maxCount }
+            // case 1: user keeps typing as the suggestion suggests.
+            if first.hasPrefix(droppedLast) {
+                return 0
+            }
+            // case 2: user also typed the suffix of the suggestion (or auto-completed by Xcode)
+            if end.character < droppedLast.count {
+                // locate the split index, the prefix of which matches the suggestion prefix.
+                var splitIndex: String.Index? = nil
+                for offset in end.character..<droppedLast.count {
+                    let proposedIndex = droppedLast.index(
+                        droppedLast.startIndex,
+                        offsetBy: offset
+                    )
+                    let prefix = droppedLast[..<proposedIndex]
+                    if first.hasPrefix(prefix) {
+                        splitIndex = proposedIndex
+                    }
+                }
+                
+                // then check how many characters are not in the suffix of the suggestion.
+                if let splitIndex {
+                    let suffix = droppedLast[splitIndex...]
+                    if last.hasSuffix(suffix) {
+                        return 0
+                    }
+                    return suffix.count
+                }
+            }
+            
+            return maxCount
         }()
+        
+        // appending suffix text not in range if needed.
         if let lastRemovedLine,
-           !skipAppendingDueToContinueTyping,
+           leftoverCount > 0,
            !lastRemovedLine.isEmptyOrNewLine,
            end.character >= 0,
            end.character - 1 < lastRemovedLine.count,
@@ -199,12 +234,12 @@ public struct SuggestionInjector {
             if toBeInserted[toBeInserted.endIndex - 1].hasSuffix("\n") {
                 toBeInserted[toBeInserted.endIndex - 1].removeLast(1)
             }
-            let leftover = lastRemovedLine[leftoverRange]
-            
-            toBeInserted[toBeInserted.endIndex - 1]
-                .append(contentsOf: leftover)
+            let leftover = lastRemovedLine[leftoverRange].suffix(leftoverCount)
+
+            toBeInserted[toBeInserted.endIndex - 1].append(contentsOf: leftover)
         }
 
+        let cursorCol = toBeInserted[toBeInserted.endIndex - 1].count - 1
         let insertingIndex = min(start.line, content.endIndex)
         content.insert(contentsOf: toBeInserted, at: insertingIndex)
         extraInfo.modifications.append(.inserted(insertingIndex, toBeInserted))
@@ -270,3 +305,4 @@ extension Array {
         indices.contains(index) ? self[index] : nil
     }
 }
+

@@ -10,17 +10,17 @@ struct ChatSettingsView: View {
         @AppStorage(\.chatGPTMaxMessageCount) var chatGPTMaxMessageCount
         @AppStorage(\.chatFontSize) var chatFontSize
         @AppStorage(\.chatCodeFontSize) var chatCodeFontSize
-        @AppStorage(\.embedFileContentInChatContextIfNoSelection)
-        var embedFileContentInChatContextIfNoSelection
-        @AppStorage(\.maxEmbeddableFileInChatContextLineCount)
-        var maxEmbeddableFileInChatContextLineCount
-        @AppStorage(\.useSelectionScopeByDefaultInChatContext)
-        var useSelectionScopeByDefaultInChatContext
+        @AppStorage(\.maxFocusedCodeLineCount)
+        var maxFocusedCodeLineCount
+        @AppStorage(\.useCodeScopeByDefaultInChatContext)
+        var useCodeScopeByDefaultInChatContext
 
         @AppStorage(\.chatFeatureProvider) var chatFeatureProvider
         @AppStorage(\.chatGPTModel) var chatGPTModel
         @AppStorage(\.defaultChatSystemPrompt) var defaultChatSystemPrompt
         @AppStorage(\.chatSearchPluginMaxIterations) var chatSearchPluginMaxIterations
+        
+        @AppStorage(\.embeddingFeatureProvider) var embeddingFeatureProvider
 
         init() {}
     }
@@ -46,11 +46,19 @@ struct ChatSettingsView: View {
     var chatSettingsForm: some View {
         Form {
             Picker(
-                "Feature Provider",
+                "Chat Feature Provider",
                 selection: $settings.chatFeatureProvider
             ) {
                 Text("OpenAI").tag(ChatFeatureProvider.openAI)
                 Text("Azure OpenAI").tag(ChatFeatureProvider.azureOpenAI)
+            }
+            
+            Picker(
+                "Embedding Feature Provider",
+                selection: $settings.embeddingFeatureProvider
+            ) {
+                Text("OpenAI").tag(EmbeddingFeatureProvider.openAI)
+                Text("Azure OpenAI").tag(EmbeddingFeatureProvider.azureOpenAI)
             }
 
             if #available(macOS 13.0, *) {
@@ -178,21 +186,17 @@ struct ChatSettingsView: View {
     @ViewBuilder
     var contextForm: some View {
         Form {
-            Toggle(isOn: $settings.useSelectionScopeByDefaultInChatContext) {
-                Text("Use selection scope by default in chat context.")
-            }
-
-            Toggle(isOn: $settings.embedFileContentInChatContextIfNoSelection) {
-                Text("Embed file content in chat context if no code is selected.")
+            Toggle(isOn: $settings.useCodeScopeByDefaultInChatContext) {
+                Text("Use @code scope by default in chat context.")
             }
 
             HStack {
                 TextField(text: .init(get: {
-                    "\(Int(settings.maxEmbeddableFileInChatContextLineCount))"
+                    "\(Int(settings.maxFocusedCodeLineCount))"
                 }, set: {
-                    settings.maxEmbeddableFileInChatContextLineCount = Int($0) ?? 0
+                    settings.maxFocusedCodeLineCount = Int($0) ?? 0
                 })) {
-                    Text("Max embeddable file")
+                    Text("Max focused code line count in chat context")
                 }
                 .textFieldStyle(.roundedBorder)
 

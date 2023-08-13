@@ -1,25 +1,22 @@
 import Foundation
+import OpenAIService
 
 public protocol ChatModel {
     func generate(
         prompt: [ChatMessage],
         stops: [String],
-        callbackManagers: [ChainCallbackManager]
-    ) async throws -> String
+        callbackManagers: [CallbackManager]
+    ) async throws -> ChatMessage
 }
 
-public struct ChatMessage {
-    public enum Role {
-        case system
-        case user
-        case assistant
+public typealias ChatMessage = OpenAIService.ChatMessage
+    
+public extension CallbackEvents {
+    struct LLMDidProduceNewToken: CallbackEvent {
+        public let info: String
     }
-
-    public var role: Role
-    public var content: String
-
-    public init(role: Role, content: String) {
-        self.role = role
-        self.content = content
+    
+    var llmDidProduceNewToken: LLMDidProduceNewToken.Type {
+        LLMDidProduceNewToken.self
     }
 }

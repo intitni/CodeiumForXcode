@@ -9,6 +9,7 @@ final class AzureViewSettings: ObservableObject {
     @AppStorage(\.azureOpenAIAPIKey) var azureOpenAIAPIKey: String
     @AppStorage(\.azureOpenAIBaseURL) var azureOpenAIBaseURL: String
     @AppStorage(\.azureChatGPTDeployment) var azureChatGPTDeployment: String
+    @AppStorage(\.azureEmbeddingDeployment) var azureEmbeddingDeployment: String
     init() {}
 }
 
@@ -44,15 +45,28 @@ struct AzureView: View {
                         isTesting = true
                         defer { isTesting = false }
                         do {
-                            let reply = try await ChatGPTService(designatedProvider: .azureOpenAI)
+                            let reply =
+                                try await ChatGPTService(
+                                    configuration: UserPreferenceChatGPTConfiguration()
+                                        .overriding(.init(featureProvider: .azureOpenAI))
+                                )
                                 .sendAndWait(content: "Hello", summary: nil)
-                            toast(Text("ChatGPT replied: \(reply ?? "N/A")"), .info)
+                            toast("ChatGPT replied: \(reply ?? "N/A")", .info)
                         } catch {
-                            toast(Text(error.localizedDescription), .error)
+                            toast(error.localizedDescription, .error)
                         }
                     }
                 }
                 .disabled(isTesting)
+            }
+            
+            HStack {
+                TextField(
+                    text: $settings.azureEmbeddingDeployment,
+                    prompt: Text("")
+                ) {
+                    Text("Embedding Model Deployment Name")
+                }.textFieldStyle(.roundedBorder)
             }
         }
     }

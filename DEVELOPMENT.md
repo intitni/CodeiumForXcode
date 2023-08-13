@@ -14,9 +14,9 @@ As its name suggests, the editor extension. Its sole purpose is to forward edito
 
 The `ExtensionService` is a program that operates in the background and performs a wide range of tasks. It redirects requests from the `EditorExtension` to the `CopilotService` and returns the updated code back to the extension, or presents it in a GUI outside of Xcode.
 
-### Core
+### Core and Tool
 
-Most of the logics are implemented inside the package `Core`.
+Most of the logics are implemented inside the package `Core` and `Tool`.
 
 - The `CopilotService` is responsible for communicating with the GitHub Copilot LSP.
 - The `Service` is responsible for handling the requests from the `EditorExtension`, communicating with the `CopilotService`, update the code blocks and present the GUI.
@@ -27,11 +27,16 @@ Most of the logics are implemented inside the package `Core`.
 
 ## Building and Archiving the App
 
-1. Build or archive the Copilot for Xcode target.
+1. Update the xcconfig files, launchAgent.plist, and Tool/Configs/Configurations.swift.
+2. Build or archive the Copilot for Xcode target.
 
 ## Testing Extension
 
 Just run both the `ExtensionService` and the `EditorExtension` Target.
+
+## SwiftUI Previews
+
+Looks like SwiftUI Previews are not very happy with Objective-C packages when running with app targets. To use previews, please switch schemes to the package product targets.
 
 ## Unit Tests
 
