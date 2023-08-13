@@ -6,8 +6,6 @@ If you have any trouble using the app, please open an issue at [https://github.c
 
 <a href="https://www.buymeacoffee.com/intitni" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
-[Get a Plus License Key to unlock more features and support this project](https://intii.lemonsqueezy.com/checkout/buy/298a8d4c-11fb-4ecd-b328-049589645449)
-
 ## Features
 
 - Code Suggestions.
@@ -158,18 +156,6 @@ Whenever your code is updated, the app will automatically fetch suggestions for 
 - Reject Suggestion: Remove the suggestion comments.
 - Prefetch Suggestions: Call only by Codeium for Xcode. In the background, Codeium for Xcode will occasionally run this command to prefetch real-time suggestions.
 - Real-time Suggestions: Call only by Codeium for Xcode. When suggestions are successfully fetched, Copilot for Xcode will run this command to present the suggestions.
-
-For Send Message, Single Round Dialog and Custom Chat commands, you can use the following template arguments:
-
-| Argument                      | Description                                    |
-| ----------------------------- | ---------------------------------------------- |
-| `{{selected_code}}`           | The currently selected code in the editor.     |
-| `{{active_editor_language}}`  | The programming language of the active editor. |
-| `{{active_editor_file_url}}`  | The URL of the active file in the editor.      |
-| `{{active_editor_file_name}}` | The name of the active file in the editor.     |
-
-The pre-built binary contains a set of exclusive features that can only be accessed with a Plus license key. To obtain a license key, please visit [this link](https://intii.lemonsqueezy.com/checkout/buy/298a8d4c-11fb-4ecd-b328-049589645449).
-The currently available Plus features include:
 
 
 ## Limitations
