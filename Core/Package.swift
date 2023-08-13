@@ -400,7 +400,6 @@ func isProIncluded(file: StaticString = #file) -> Bool {
     let filePath = "\(file)"
     let url = URL(fileURLWithPath: filePath)
         .deletingLastPathComponent()
-        .deletingLastPathComponent()
         .appendingPathComponent("Pro/Package.swift")
     return FileManager.default.fileExists(atPath: url.path)
 }
