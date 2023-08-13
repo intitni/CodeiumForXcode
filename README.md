@@ -6,6 +6,8 @@ If you have any trouble using the app, please open an issue at [https://github.c
 
 <a href="https://www.buymeacoffee.com/intitni" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
+[Get a Plus License Key to unlock more features and support this project](https://intii.lemonsqueezy.com/checkout/buy/298a8d4c-11fb-4ecd-b328-049589645449)
+
 ## Features
 
 - Code Suggestions.
@@ -17,17 +19,19 @@ If you have any trouble using the app, please open an issue at [https://github.c
 - [Installation and Setup](#installation-and-setup)
   - [Install](#install)
   - [Enable the Extension](#enable-the-extension)
-  - [Setting Up Codeium](#setting-up-codeium)
   - [Granting Permissions to the App](#granting-permissions-to-the-app)
+  - [Setting Up Key Bindings](#setting-up-key-bindings)
+  - [Setting Up Codeium](#setting-up-codeium)
 - [Update](#update)
 - [Feature](#feature)
-- [Key Bindings](#key-bindings)
 - [Limitations](#limitations)
 - [License](#license)
 
-For frequently asked questions, check [FAQ](https://github.com/intitni/CopilotForXcode/issues/65).
+For frequently asked questions, check [FAQ](https://github.com/intitni/CopilotForXcode/wiki/Frequently-Asked-Questions).
 
 For development instruction, check [Development.md](DEVELOPMENT.md).
+
+For more information, check the [wiki](https://github.com/intitni/CopilotForXcode/wiki)
 
 ## Prerequisites
 
@@ -68,6 +72,27 @@ Alternatively, you may manually grant the required permissions by navigating to 
 <img alt="Accessibility API" src="/accessibility_api_permission.png" width="500px">
 
 If you encounter an alert requesting permission that you have previously granted, please remove the permission from the list and add it again to re-grant the necessary permissions.
+
+### Setting Up Key Bindings
+
+The extension will work better if you use key bindings.
+
+It looks like there is no way to add default key bindings to commands, but you can set them up in `Xcode settings > Key Bindings`. You can filter the list by typing `copilot` in the search bar.
+
+A [recommended setup](https://github.com/intitni/CopilotForXcode/issues/14) that should cause no conflict is
+
+| Command             | Key Binding |
+| ------------------- | ----------- |
+| Accept Suggestions  | `⌥}`        |
+| Reject Suggestion   | `⌥{`        |
+| Next Suggestion     | `⌥>`        |
+| Previous Suggestion | `⌥<`        |
+| Open Chat           | `⌥"`        |
+| Explain Selection   | `⌥\|`       |
+
+Essentially using `⌥⇧` as the "access" key combination for all bindings.
+
+Another convenient method to access commands is by using the `⇧⌘/` shortcut to search for a command in the menu bar.
 
 ### Setting Up GitHub Copilot
 
@@ -112,6 +137,7 @@ If you find that some of the features are no longer working, please first try re
 The app can provide real-time code suggestions based on the files you have opened. 
 
 The feature provides two presentation modes:
+
 - Nearby Text Cursor: This mode shows suggestions based on the position of the text cursor.
 - Floating Widget: This mode shows suggestions next to the circular widget.
 
@@ -142,23 +168,9 @@ For Send Message, Single Round Dialog and Custom Chat commands, you can use the 
 | `{{active_editor_file_url}}`  | The URL of the active file in the editor.      |
 | `{{active_editor_file_name}}` | The name of the active file in the editor.     |
 
-## Key Bindings
+The pre-built binary contains a set of exclusive features that can only be accessed with a Plus license key. To obtain a license key, please visit [this link](https://intii.lemonsqueezy.com/checkout/buy/298a8d4c-11fb-4ecd-b328-049589645449).
+The currently available Plus features include:
 
-It looks like there is no way to add default key bindings to commands, but you can set them up in `Xcode settings > Key Bindings`. You can filter the list by typing `codeium` in the search bar.
-
-A [recommended setup](https://github.com/intitni/CopilotForXcode/issues/14) that should cause no conflict is
-
-| Command | Key Binding |
-| --- | --- |
-| Get Suggestions | `⌥?` |
-| Accept Suggestions | `⌥}` |
-| Reject Suggestion | `⌥{` |
-| Next Suggestion | `⌥>` |
-| Previous Suggestion | `⌥<` |
-
-Essentially using `⌥⇧` as the "access" key combination for all bindings.
-
-Another convenient method to access commands is by using the `⇧⌘/` shortcut to search for a command in the menu bar.
 
 ## Limitations
 
