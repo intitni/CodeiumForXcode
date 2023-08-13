@@ -5,7 +5,7 @@
 	<key>Label</key>
 	<string>com.intii.CodeiumForXcode.ExtensionService</string>
 	<key>Program</key>
-	<string>/Applications/Codeium for Xcode.app/Contents/Applications/CodeiumForXcodeExtensionService/Contents/MacOS/CodeiumForXcodeExtensionService</string>
+	<string>/Applications/Codeium for Xcode.app/Contents/Applications/CodeiumForXcodeExtensionService.app/Contents/MacOS/CodeiumForXcodeExtensionService</string>
 	<key>MachServices</key>
 	<dict>
 		<key>com.intii.CodeiumForXcode.ExtensionService</key>
