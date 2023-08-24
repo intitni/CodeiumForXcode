@@ -189,6 +189,15 @@ public extension UserDefaultPreferenceKeys {
     var codeiumVerboseLog: PreferenceKey<Bool> {
         .init(defaultValue: false, key: "CodeiumVerboseLog")
     }
+    var codeiumEnterpriseMode: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "CodeiumEnterpriseMode")
+    }
+    var codeiumPortalUrl: PreferenceKey<String> {
+        .init(defaultValue: "", key: "CodeiumPortalUrl")
+    }
+    var codeiumApiUrl: PreferenceKey<String> {
+        .init(defaultValue: "", key: "CodeiumApiUrl")
+    }
 }
 
 // MARK: - Prompt to Code
