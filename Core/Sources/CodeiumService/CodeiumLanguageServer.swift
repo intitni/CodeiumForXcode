@@ -42,10 +42,10 @@ final class CodeiumLanguageServer {
 
         process.executableURL = languageServerExecutableURL
 
-        let isEnterpriseMode = UserDefaults.standard.value(for: \.codeiumEnterpriseMode)
+        let isEnterpriseMode = UserDefaults.shared.value(for: \.codeiumEnterpriseMode)
         var apiServerUrl = "https://server.codeium.com"
-        if isEnterpriseMode && UserDefaults.standard.value(for: \.codeiumApiUrl) != "" {
-            apiServerUrl = UserDefaults.standard.value(for: \.codeiumApiUrl)
+        if isEnterpriseMode && UserDefaults.shared.value(for: \.codeiumApiUrl) != "" {
+            apiServerUrl = UserDefaults.shared.value(for: \.codeiumApiUrl)
         }
 
         process.arguments = [
