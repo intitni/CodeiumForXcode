@@ -79,14 +79,14 @@ It looks like there is no way to add default key bindings to commands, but you c
 
 A [recommended setup](https://github.com/intitni/CopilotForXcode/issues/14) that should cause no conflict is
 
-| Command             | Key Binding |
-| ------------------- | ----------- |
-| Accept Suggestions  | `⌥}`        |
-| Reject Suggestion   | `⌥{`        |
-| Next Suggestion     | `⌥>`        |
-| Previous Suggestion | `⌥<`        |
-| Open Chat           | `⌥"`        |
-| Explain Selection   | `⌥\|`       |
+| Command             | Key Binding                                            |
+| ------------------- | ------------------------------------------------------ |
+| Accept Suggestions  | `⌥}` (Or accept with Tab if Plus license is available) |
+| Reject Suggestion   | `⌥{`                                                   |
+| Next Suggestion     | `⌥>`                                                   |
+| Previous Suggestion | `⌥<`                                                   |
+| Open Chat           | `⌥"`                                                   |
+| Explain Selection   | `⌥\|`                                                  |
 
 Essentially using `⌥⇧` as the "access" key combination for all bindings.
 

@@ -15,7 +15,6 @@ let package = Package(
                 "FileChangeChecker",
                 "LaunchAgentManager",
                 "UpdateChecker",
-                "UserDefaultsObserver",
             ]
         ),
         .library(
@@ -72,14 +71,15 @@ let package = Package(
                 "SuggestionService",
                 "GitHubCopilotService",
                 "XPCShared",
-                "CGEventObserver",
                 "DisplayLink",
                 "SuggestionWidget",
                 "ChatService",
                 "PromptToCodeService",
                 "ServiceUpdateMigration",
-                "UserDefaultsObserver",
                 "ChatGPTChatTab",
+                .product(name: "CGEventObserver", package: "Tool"),
+                .product(name: "Workspace", package: "Tool"),
+                .product(name: "UserDefaultsObserver", package: "Tool"),
                 .product(name: "AppMonitoring", package: "Tool"),
                 .product(name: "Environment", package: "Tool"),
                 .product(name: "SuggestionModel", package: "Tool"),
@@ -91,7 +91,7 @@ let package = Package(
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
                 .product(name: "Dependencies", package: "swift-dependencies"),
             ].pro([
-                "ProChatTabs",
+                "ProService",
             ])
         ),
         .testTarget(
@@ -149,7 +149,7 @@ let package = Package(
         .target(name: "SuggestionService", dependencies: [
             "GitHubCopilotService",
             "CodeiumService",
-            "UserDefaultsObserver",
+            .product(name: "UserDefaultsObserver", package: "Tool"),
         ]),
 
         // MARK: - Prompt To Code
@@ -180,6 +180,7 @@ let package = Package(
                 // context collectors
                 "WebChatContextCollector",
                 "ActiveDocumentChatContextCollector",
+                "SystemInfoChatContextCollector",
 
                 .product(name: "AppMonitoring", package: "Tool"),
                 .product(name: "Environment", package: "Tool"),
@@ -226,7 +227,7 @@ let package = Package(
             name: "SuggestionWidget",
             dependencies: [
                 "ChatGPTChatTab",
-                "UserDefaultsObserver",
+                .product(name: "UserDefaultsObserver", package: "Tool"),
                 .product(name: "SharedUIComponents", package: "Tool"),
                 .product(name: "AppMonitoring", package: "Tool"),
                 .product(name: "Environment", package: "Tool"),
@@ -241,12 +242,6 @@ let package = Package(
 
         // MARK: - Helpers
 
-        .target(
-            name: "CGEventObserver",
-            dependencies: [
-                .product(name: "Logger", package: "Tool"),
-            ]
-        ),
         .target(name: "FileChangeChecker"),
         .target(name: "LaunchAgentManager"),
         .target(name: "DisplayLink"),
@@ -264,12 +259,11 @@ let package = Package(
                 .product(name: "Preferences", package: "Tool"),
             ]
         ),
-        .target(name: "UserDefaultsObserver"),
         .target(
             name: "PlusFeatureFlag",
             dependencies: [
             ].pro([
-                "LicenseManagement"
+                "LicenseManagement",
             ])
         ),
 
@@ -354,6 +348,15 @@ let package = Package(
         ),
 
         .target(
+            name: "SystemInfoChatContextCollector",
+            dependencies: [
+                "ChatContextCollector",
+                .product(name: "OpenAIService", package: "Tool"),
+            ],
+            path: "Sources/ChatContextCollectors/SystemInfoChatContextCollector"
+        ),
+
+        .target(
             name: "ActiveDocumentChatContextCollector",
             dependencies: [
                 "ChatContextCollector",
@@ -378,19 +381,19 @@ let package = Package(
 
 extension [Target.Dependency] {
     func pro(_ targetNames: [String]) -> [Target.Dependency] {
-        if isProIncluded() {
-            return self + targetNames.map { Target.Dependency.product(name: $0, package: "Pro") }
+        if !isProIncluded() {
+            return self
         }
-        return self
+        return self + targetNames.map { Target.Dependency.product(name: $0, package: "Pro") }
     }
 }
 
 extension [Package.Dependency] {
     var pro: [Package.Dependency] {
-        if isProIncluded() {
-            return self + [.package(path: "../Pro")]
+        if !isProIncluded() {
+            return self
         }
-        return self
+        return self + [.package(path: "../Pro")]
     }
 }
 

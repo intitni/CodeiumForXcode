@@ -11,6 +11,9 @@ final class DebugSettings: ObservableObject {
     @AppStorage(\.alwaysAcceptSuggestionWithAccessibilityAPI)
     var alwaysAcceptSuggestionWithAccessibilityAPI
     @AppStorage(\.enableXcodeInspectorDebugMenu) var enableXcodeInspectorDebugMenu
+    @AppStorage(\.disableFunctionCalling) var disableFunctionCalling
+    @AppStorage(\.disableGitHubCopilotSettingsAutoRefreshOnAppear)
+    var disableGitHubCopilotSettingsAutoRefreshOnAppear
     init() {}
 }
 
@@ -21,13 +24,13 @@ struct DebugSettingsView: View {
         ScrollView {
             Form {
                 Toggle(isOn: $settings.animationACrashSuggestion) {
-                    Text("Enable Animation A")
+                    Text("Enable animation A")
                 }
                 Toggle(isOn: $settings.animationBCrashSuggestion) {
-                    Text("Enable Animation B")
+                    Text("Enable animation B")
                 }
                 Toggle(isOn: $settings.animationCCrashSuggestion) {
-                    Text("Enable Widget Breathing Animation")
+                    Text("Enable widget breathing animation")
                 }
                 Toggle(isOn: $settings.preCacheOnFileOpen) {
                     Text("Cache editor information on file open")
@@ -39,10 +42,16 @@ struct DebugSettingsView: View {
                     Text("Trigger command with AccessibilityAPI")
                 }
                 Toggle(isOn: $settings.alwaysAcceptSuggestionWithAccessibilityAPI) {
-                    Text("Always accept suggestion with AccessibilityAPI")
+                    Text("Always accept suggestion with Accessibility API")
                 }
                 Toggle(isOn: $settings.enableXcodeInspectorDebugMenu) {
                     Text("Enable Xcode inspector debug menu")
+                }
+                Toggle(isOn: $settings.disableFunctionCalling) {
+                    Text("Disable function calling for chat feature")
+                }
+                Toggle(isOn: $settings.disableGitHubCopilotSettingsAutoRefreshOnAppear) {
+                    Text("Disable GitHub Copilot settings auto refresh status on appear")
                 }
             }
             .padding()
@@ -55,4 +64,5 @@ struct DebugSettingsView_Preview: PreviewProvider {
         DebugSettingsView()
     }
 }
+
 
