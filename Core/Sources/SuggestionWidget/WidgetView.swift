@@ -19,7 +19,7 @@ struct WidgetView: View {
                 .fill(isHovering ? .white.opacity(0.5) : .white.opacity(0.15))
                 .onTapGesture {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        store.send(.widgetClicked)
+                        // store.send(.widgetClicked)
                     }
                 }
                 .overlay { overlayCircle }

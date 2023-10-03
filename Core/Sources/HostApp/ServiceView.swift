@@ -3,7 +3,7 @@ import ComposableArchitecture
 
 struct ServiceView: View {
     let store: StoreOf<HostApp>
-    @State var tag = 0
+    @State var tag = 1
     
     var body: some View {
         SidebarTabView(tag: $tag) {
@@ -25,34 +25,34 @@ struct ServiceView: View {
                 image: "globe"
             )
             
-            ChatModelManagementView(store: store.scope(
-                state: \.chatModelManagement,
-                action: HostApp.Action.chatModelManagement
-            )).sidebarItem(
-                tag: 2,
-                title: "Chat Models",
-                subtitle: "Chat, Prompt to Code",
-                image: "globe"
-            )
-            
-            EmbeddingModelManagementView(store: store.scope(
-                state: \.embeddingModelManagement,
-                action: HostApp.Action.embeddingModelManagement
-            )).sidebarItem(
-                tag: 3,
-                title: "Embedding Models",
-                subtitle: "Chat, Prompt to Code",
-                image: "globe"
-            )
-            
-            ScrollView {
-                BingSearchView().padding()
-            }.sidebarItem(
-                tag: 4,
-                title: "Bing Search",
-                subtitle: "Search Chat Plugin",
-                image: "globe"
-            )
+//            ChatModelManagementView(store: store.scope(
+//                state: \.chatModelManagement,
+//                action: HostApp.Action.chatModelManagement
+//            )).sidebarItem(
+//                tag: 2,
+//                title: "Chat Models",
+//                subtitle: "Chat, Prompt to Code",
+//                image: "globe"
+//            )
+//            
+//            EmbeddingModelManagementView(store: store.scope(
+//                state: \.embeddingModelManagement,
+//                action: HostApp.Action.embeddingModelManagement
+//            )).sidebarItem(
+//                tag: 3,
+//                title: "Embedding Models",
+//                subtitle: "Chat, Prompt to Code",
+//                image: "globe"
+//            )
+//            
+//            ScrollView {
+//                BingSearchView().padding()
+//            }.sidebarItem(
+//                tag: 4,
+//                title: "Bing Search",
+//                subtitle: "Search Chat Plugin",
+//                image: "globe"
+//            )
         }
     }
 }
