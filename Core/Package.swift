@@ -50,7 +50,6 @@ let package = Package(
             url: "https://github.com/pointfreeco/swift-composable-architecture",
             from: "0.55.0"
         ),
-        .package(url: "https://github.com/apple/swift-syntax.git", branch: "main"),
     ].pro,
     targets: [
         // MARK: - Main
@@ -71,13 +70,11 @@ let package = Package(
                 "SuggestionService",
                 "GitHubCopilotService",
                 "XPCShared",
-                "DisplayLink",
                 "SuggestionWidget",
                 "ChatService",
                 "PromptToCodeService",
                 "ServiceUpdateMigration",
                 "ChatGPTChatTab",
-                .product(name: "CGEventObserver", package: "Tool"),
                 .product(name: "Workspace", package: "Tool"),
                 .product(name: "UserDefaultsObserver", package: "Tool"),
                 .product(name: "AppMonitoring", package: "Tool"),
@@ -119,6 +116,7 @@ let package = Package(
                 "LaunchAgentManager",
                 "PlusFeatureFlag",
                 .product(name: "Toast", package: "Tool"),
+                .product(name: "SharedUIComponents", package: "Tool"),
                 .product(name: "SuggestionModel", package: "Tool"),
                 .product(name: "MarkdownUI", package: "swift-markdown-ui"),
                 .product(name: "OpenAIService", package: "Tool"),
@@ -157,9 +155,12 @@ let package = Package(
         .target(
             name: "PromptToCodeService",
             dependencies: [
+                .product(name: "FocusedCodeFinder", package: "Tool"),
                 .product(name: "SuggestionModel", package: "Tool"),
                 .product(name: "Environment", package: "Tool"),
                 .product(name: "OpenAIService", package: "Tool"),
+                .product(name: "AppMonitoring", package: "Tool"),
+                .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
             ]
         ),
         .testTarget(name: "PromptToCodeServiceTests", dependencies: ["PromptToCodeService"]),
@@ -170,7 +171,6 @@ let package = Package(
             name: "ChatService",
             dependencies: [
                 "ChatPlugin",
-                "ChatContextCollector",
 
                 // plugins
                 "MathChatPlugin",
@@ -182,12 +182,15 @@ let package = Package(
                 "ActiveDocumentChatContextCollector",
                 "SystemInfoChatContextCollector",
 
+                .product(name: "ChatContextCollector", package: "Tool"),
                 .product(name: "AppMonitoring", package: "Tool"),
                 .product(name: "Environment", package: "Tool"),
                 .product(name: "Parsing", package: "swift-parsing"),
                 .product(name: "OpenAIService", package: "Tool"),
                 .product(name: "Preferences", package: "Tool"),
-            ]
+            ].pro([
+                "ProService",
+            ])
         ),
         .testTarget(name: "ChatServiceTests", dependencies: ["ChatService"]),
         .target(
@@ -196,16 +199,6 @@ let package = Package(
                 .product(name: "Environment", package: "Tool"),
                 .product(name: "OpenAIService", package: "Tool"),
                 .product(name: "Terminal", package: "Tool"),
-            ]
-        ),
-        .target(
-            name: "ChatContextCollector",
-            dependencies: [
-                .product(name: "SuggestionModel", package: "Tool"),
-                .product(name: "AppMonitoring", package: "Tool"),
-                .product(name: "Environment", package: "Tool"),
-                .product(name: "OpenAIService", package: "Tool"),
-                .product(name: "Preferences", package: "Tool"),
             ]
         ),
 
@@ -226,6 +219,7 @@ let package = Package(
         .target(
             name: "SuggestionWidget",
             dependencies: [
+                "PromptToCodeService",
                 "ChatGPTChatTab",
                 .product(name: "UserDefaultsObserver", package: "Tool"),
                 .product(name: "SharedUIComponents", package: "Tool"),
@@ -244,7 +238,6 @@ let package = Package(
 
         .target(name: "FileChangeChecker"),
         .target(name: "LaunchAgentManager"),
-        .target(name: "DisplayLink"),
         .target(
             name: "UpdateChecker",
             dependencies: [
@@ -257,6 +250,13 @@ let package = Package(
             dependencies: [
                 "GitHubCopilotService",
                 .product(name: "Preferences", package: "Tool"),
+                .product(name: "Keychain", package: "Tool"),
+            ]
+        ),
+        .testTarget(
+            name: "ServiceUpdateMigrationTests",
+            dependencies: [
+                "ServiceUpdateMigration",
             ]
         ),
         .target(
@@ -338,7 +338,7 @@ let package = Package(
         .target(
             name: "WebChatContextCollector",
             dependencies: [
-                "ChatContextCollector",
+                .product(name: "ChatContextCollector", package: "Tool"),
                 .product(name: "LangChain", package: "Tool"),
                 .product(name: "OpenAIService", package: "Tool"),
                 .product(name: "ExternalServices", package: "Tool"),
@@ -350,7 +350,7 @@ let package = Package(
         .target(
             name: "SystemInfoChatContextCollector",
             dependencies: [
-                "ChatContextCollector",
+                .product(name: "ChatContextCollector", package: "Tool"),
                 .product(name: "OpenAIService", package: "Tool"),
             ],
             path: "Sources/ChatContextCollectors/SystemInfoChatContextCollector"
@@ -359,13 +359,11 @@ let package = Package(
         .target(
             name: "ActiveDocumentChatContextCollector",
             dependencies: [
-                "ChatContextCollector",
-                .product(name: "LangChain", package: "Tool"),
+                .product(name: "ChatContextCollector", package: "Tool"),
                 .product(name: "OpenAIService", package: "Tool"),
                 .product(name: "Preferences", package: "Tool"),
-                .product(name: "ASTParser", package: "Tool"),
-                .product(name: "SwiftSyntax", package: "swift-syntax"),
-                .product(name: "SwiftParser", package: "swift-syntax"),
+                .product(name: "FocusedCodeFinder", package: "Tool"),
+                .product(name: "AppMonitoring", package: "Tool"),
             ],
             path: "Sources/ChatContextCollectors/ActiveDocumentChatContextCollector"
         ),
@@ -381,8 +379,9 @@ let package = Package(
 
 extension [Target.Dependency] {
     func pro(_ targetNames: [String]) -> [Target.Dependency] {
-        if !isProIncluded() {
-            return self
+        if isProIncluded() {
+            // include the pro package
+            return self + targetNames.map { Target.Dependency.product(name: $0, package: "Pro") }
         }
         return self + targetNames.map { Target.Dependency.product(name: $0, package: "Pro") }
     }
@@ -390,8 +389,9 @@ extension [Target.Dependency] {
 
 extension [Package.Dependency] {
     var pro: [Package.Dependency] {
-        if !isProIncluded() {
-            return self
+        if isProIncluded() {
+            // include the pro package
+            return self + [.package(path: "../Pro")]
         }
         return self + [.package(path: "../Pro")]
     }
@@ -405,14 +405,18 @@ func isProIncluded(file: StaticString = #file) -> Bool {
     let rootURL = fileURL
         .deletingLastPathComponent()
         .deletingLastPathComponent()
-    let folderURL = rootURL.appendingPathComponent("Pro")
-    if !FileManager.default.fileExists(atPath: folderURL.path) {
+    let confURL = rootURL.appendingPathComponent("PLUS")
+    if !FileManager.default.fileExists(atPath: confURL.path) {
         return false
     }
-    let packageManifestURL = folderURL.appendingPathComponent("Package.swift")
-    if !FileManager.default.fileExists(atPath: packageManifestURL.path) {
+    do {
+        let content = String(
+            data: try Data(contentsOf: confURL),
+            encoding: .utf8
+        )
+        return content?.hasPrefix("YES") ?? false
+    } catch {
         return false
     }
-    return true
 }
 

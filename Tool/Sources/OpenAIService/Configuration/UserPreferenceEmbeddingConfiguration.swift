@@ -1,85 +1,90 @@
+import AIModel
 import Foundation
 import Preferences
 
 public struct UserPreferenceEmbeddingConfiguration: EmbeddingConfiguration {
-    public var featureProvider: EmbeddingFeatureProvider {
-        UserDefaults.shared.value(for: \.embeddingFeatureProvider)
-    }
+    public var embeddingModelKey: KeyPath<UserDefaultPreferenceKeys, PreferenceKey<String>>?
 
-    public var model: String {
-        OpenAIEmbeddingModel.textEmbeddingAda002.rawValue
-    }
+    public var model: EmbeddingModel? {
+        let models = UserDefaults.shared.value(for: \.embeddingModels)
 
-    public var endpoint: String {
-        endpoint(for: featureProvider)
-    }
+        if let embeddingModelKey {
+            let id = UserDefaults.shared.value(for: embeddingModelKey)
+            if let model = models.first(where: { $0.id == id }) {
+                return model
+            }
+        }
 
-    public var apiKey: String {
-        apiKey(for: featureProvider)
+        let id = UserDefaults.shared.value(for: \.defaultChatFeatureEmbeddingModelId)
+        return models.first { $0.id == id }
+            ?? models.first
     }
 
     public var maxToken: Int {
-        OpenAIEmbeddingModel.textEmbeddingAda002.maxToken
+        model?.info.maxTokens ?? 0
     }
-    
-    public init() {}
+
+    public var dimensions: Int {
+        let dimensions = model?.info.dimensions ?? 0
+        if dimensions <= 0 {
+            return 1536
+        }
+        return dimensions
+    }
+
+    public init(
+        embeddingModelKey: KeyPath<UserDefaultPreferenceKeys, PreferenceKey<String>>? = nil
+    ) {
+        self.embeddingModelKey = embeddingModelKey
+    }
 }
 
-public class OverridingEmbeddingConfiguration<
-    Configuration: EmbeddingConfiguration
->: EmbeddingConfiguration {
+public class OverridingEmbeddingConfiguration: EmbeddingConfiguration {
     public struct Overriding {
-        var featureProvider: EmbeddingFeatureProvider?
-        var model: String?
-        var endPoint: String?
-        var apiKey: String?
-        var maxTokens: Int?
+        public var modelId: String?
+        public var model: EmbeddingModel?
+        public var maxTokens: Int?
+        public var dimensions: Int?
 
         public init(
-            model: String? = nil,
-            featureProvider: EmbeddingFeatureProvider? = nil,
-            endPoint: String? = nil,
-            apiKey: String? = nil,
-            maxTokens: Int? = nil
+            modelId: String? = nil,
+            model: EmbeddingModel? = nil,
+            maxTokens: Int? = nil,
+            dimensions: Int? = nil
         ) {
+            self.modelId = modelId
             self.model = model
-            self.featureProvider = featureProvider
-            self.endPoint = endPoint
-            self.apiKey = apiKey
             self.maxTokens = maxTokens
+            self.dimensions = dimensions
         }
     }
 
-    private let configuration: Configuration
+    private let configuration: EmbeddingConfiguration
     public var overriding = Overriding()
 
-    public init(overriding configuration: Configuration, with overrides: Overriding = .init()) {
-        self.overriding = overrides
+    public init(
+        overriding configuration: any EmbeddingConfiguration,
+        with overrides: Overriding = .init()
+    ) {
+        overriding = overrides
         self.configuration = configuration
     }
 
-    public var featureProvider: EmbeddingFeatureProvider {
-        overriding.featureProvider ?? configuration.featureProvider
-    }
-    
-    public var model: String {
-        overriding.model ?? configuration.model
-    }
-
-    public var endpoint: String {
-        overriding.endPoint
-            ?? overriding.featureProvider.map(endpoint(for:))
-            ?? configuration.endpoint
+    public var model: EmbeddingModel? {
+        if let model = overriding.model { return model }
+        let models = UserDefaults.shared.value(for: \.embeddingModels)
+        guard let id = overriding.modelId,
+              let model = models.first(where: { $0.id == id })
+        else { return configuration.model }
+        return model
     }
 
-    public var apiKey: String {
-        overriding.apiKey
-            ?? overriding.featureProvider.map(apiKey(for:))
-            ?? configuration.apiKey
-    }
-    
     public var maxToken: Int {
         overriding.maxTokens ?? configuration.maxToken
+    }
+
+    public var dimensions: Int {
+        overriding.dimensions ?? configuration.dimensions
     }
 }
 

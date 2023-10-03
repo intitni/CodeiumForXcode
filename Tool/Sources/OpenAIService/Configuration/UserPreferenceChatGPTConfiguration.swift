@@ -1,31 +1,31 @@
+import AIModel
 import Foundation
 import Preferences
 
 public struct UserPreferenceChatGPTConfiguration: ChatGPTConfiguration {
-    public var featureProvider: ChatFeatureProvider {
-        UserDefaults.shared.value(for: \.chatFeatureProvider)
-    }
-
+    public var chatModelKey: KeyPath<UserDefaultPreferenceKeys, PreferenceKey<String>>?
+    
     public var temperature: Double {
         min(max(0, UserDefaults.shared.value(for: \.chatGPTTemperature)), 2)
     }
 
-    public var model: String {
-        let value = UserDefaults.shared.value(for: \.chatGPTModel)
-        if value.isEmpty { return "gpt-3.5-turbo" }
-        return value
-    }
-
-    public var endpoint: String {
-        endpoint(for: featureProvider)
-    }
-
-    public var apiKey: String {
-        apiKey(for: featureProvider)
+    public var model: ChatModel? {
+        let models = UserDefaults.shared.value(for: \.chatModels)
+        
+        if let chatModelKey {
+            let id = UserDefaults.shared.value(for: chatModelKey)
+            if let model = models.first(where: { $0.id == id }) {
+                return model
+            }
+        }
+        
+        let id = UserDefaults.shared.value(for: \.defaultChatFeatureChatModelId)
+        return models.first { $0.id == id }
+            ?? models.first
     }
 
     public var maxTokens: Int {
-        UserDefaults.shared.value(for: \.chatGPTMaxToken)
+        model?.info.maxTokens ?? 0
     }
 
     public var stop: [String] {
@@ -40,16 +40,16 @@ public struct UserPreferenceChatGPTConfiguration: ChatGPTConfiguration {
         true
     }
 
-    public init() {}
+    public init(chatModelKey: KeyPath<UserDefaultPreferenceKeys, PreferenceKey<String>>? = nil) {
+        self.chatModelKey = chatModelKey
+    }
 }
 
 public class OverridingChatGPTConfiguration: ChatGPTConfiguration {
     public struct Overriding: Codable {
-        public var featureProvider: ChatFeatureProvider?
         public var temperature: Double?
-        public var model: String?
-        public var endPoint: String?
-        public var apiKey: String?
+        public var modelId: String?
+        public var model: ChatModel?
         public var stop: [String]?
         public var maxTokens: Int?
         public var minimumReplyTokens: Int?
@@ -57,23 +57,19 @@ public class OverridingChatGPTConfiguration: ChatGPTConfiguration {
 
         public init(
             temperature: Double? = nil,
-            model: String? = nil,
+            modelId: String? = nil,
+            model: ChatModel? = nil,
             stop: [String]? = nil,
             maxTokens: Int? = nil,
             minimumReplyTokens: Int? = nil,
-            featureProvider: ChatFeatureProvider? = nil,
-            endPoint: String? = nil,
-            apiKey: String? = nil,
             runFunctionsAutomatically: Bool? = nil
         ) {
             self.temperature = temperature
+            self.modelId = modelId
             self.model = model
             self.stop = stop
             self.maxTokens = maxTokens
             self.minimumReplyTokens = minimumReplyTokens
-            self.featureProvider = featureProvider
-            self.endPoint = endPoint
-            self.apiKey = apiKey
             self.runFunctionsAutomatically = runFunctionsAutomatically
         }
     }
@@ -89,28 +85,17 @@ public class OverridingChatGPTConfiguration: ChatGPTConfiguration {
         self.configuration = configuration
     }
 
-    public var featureProvider: ChatFeatureProvider {
-        overriding.featureProvider ?? configuration.featureProvider
-    }
-
     public var temperature: Double {
         overriding.temperature ?? configuration.temperature
     }
 
-    public var model: String {
-        overriding.model ?? configuration.model
-    }
-
-    public var endpoint: String {
-        overriding.endPoint
-            ?? overriding.featureProvider.map(endpoint(for:))
-            ?? configuration.endpoint
-    }
-
-    public var apiKey: String {
-        overriding.apiKey
-            ?? overriding.featureProvider.map(apiKey(for:))
-            ?? configuration.apiKey
+    public var model: ChatModel? {
+        if let model = overriding.model { return model }
+        let models = UserDefaults.shared.value(for: \.chatModels)
+        guard let id = overriding.modelId,
+              let model = models.first(where: { $0.id == id })
+        else { return configuration.model }
+        return model
     }
 
     public var stop: [String] {

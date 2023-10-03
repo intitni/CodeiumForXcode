@@ -36,8 +36,9 @@ public final class CodeiumAuthService {
     func generate(token: String) async throws -> String {
         var registerUserUrl = URL(string: "https://api.codeium.com/register_user/")
         let apiUrl = UserDefaults.shared.value(for: \.codeiumApiUrl)
-        if UserDefaults.shared.value(for: \.codeiumEnterpriseMode) && apiUrl != "" {
-            registerUserUrl = URL(string: apiUrl + "/exa.api_server_pb.ApiServerService/RegisterUser")
+        if UserDefaults.shared.value(for: \.codeiumEnterpriseMode), apiUrl != "" {
+            registerUserUrl =
+                URL(string: apiUrl + "/exa.api_server_pb.ApiServerService/RegisterUser")
         }
 
         var request = URLRequest(url: registerUserUrl!)

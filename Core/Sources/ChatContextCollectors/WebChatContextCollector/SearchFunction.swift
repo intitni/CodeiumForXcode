@@ -29,7 +29,7 @@ struct SearchFunction: ChatGPTFunction {
         }
     }
 
-    var reportProgress: (String) async -> Void = { _ in }
+    let maxTokens: Int
 
     var name: String {
         "searchWeb"
@@ -60,11 +60,14 @@ struct SearchFunction: ChatGPTFunction {
         ]
     }
 
-    func prepare() async {
+    func prepare(reportProgress: @escaping ReportProgress) async {
         await reportProgress("Searching..")
     }
 
-    func call(arguments: Arguments) async throws -> Result {
+    func call(
+        arguments: Arguments,
+        reportProgress: @escaping ReportProgress
+    ) async throws -> Result {
         await reportProgress("Searching \(arguments.query)")
 
         do {
@@ -72,9 +75,10 @@ struct SearchFunction: ChatGPTFunction {
                 subscriptionKey: UserDefaults.shared.value(for: \.bingSearchSubscriptionKey),
                 searchURL: UserDefaults.shared.value(for: \.bingSearchEndpoint)
             )
+
             let result = try await bingSearch.search(
                 query: arguments.query,
-                numberOfResult: UserDefaults.shared.value(for: \.chatGPTMaxToken) > 5000 ? 5 : 3,
+                numberOfResult: maxTokens > 5000 ? 5 : 3,
                 freshness: arguments.freshness
             )
 

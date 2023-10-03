@@ -32,7 +32,10 @@ struct CodeiumView: View {
 
         func generateAuthURL() -> URL {
             if codeiumEnterpriseMode && (codeiumPortalUrl != "") {
-                return URL(string: codeiumPortalUrl + "/profile?response_type=token&redirect_uri=show-auth-token&state=\(UUID().uuidString)&scope=openid%20profile%20email&redirect_parameters_type=query")!
+                return URL(
+                    string: codeiumPortalUrl +
+                        "/profile?response_type=token&redirect_uri=show-auth-token&state=\(UUID().uuidString)&scope=openid%20profile%20email&redirect_parameters_type=query"
+                )!
             }
 
             return URL(
@@ -156,10 +159,10 @@ struct CodeiumView: View {
                         updateButton
                     }
                 }
-                
+
                 if viewModel.isSignedIn {
                     Text("Status: Signed In")
-                    
+
                     Button(action: {
                         Task {
                             do {
@@ -173,7 +176,7 @@ struct CodeiumView: View {
                     }
                 } else {
                     Text("Status: Not Signed In")
-                    
+
                     Button(action: {
                         isSignInPanelPresented = true
                     }) {
@@ -204,8 +207,6 @@ struct CodeiumView: View {
                     }
                 }
             }
-            
-            Divider()
 
             Form {
                 Toggle("Codeium Enterprise Mode", isOn: $viewModel.codeiumEnterpriseMode)
@@ -254,13 +255,13 @@ struct CodeiumSignInView: View {
 
             HStack {
                 Spacer()
-                
+
                 Button(action: {
                     isPresented = false
                 }) {
                     Text("Cancel")
                 }
-                
+
                 Button(action: {
                     isGeneratingKey = true
                     Task {
