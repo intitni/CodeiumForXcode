@@ -41,6 +41,9 @@ public struct EmbeddingService {
     }
 
     public func embed(text: [String]) async throws -> EmbeddingResponse {
+        guard let model = configuration.model else {
+            throw ChatGPTServiceError.embeddingModelNotAvailable
+        }
         guard let url = URL(string: configuration.endpoint) else {
             throw ChatGPTServiceError.endpointIncorrect
         }
@@ -49,12 +52,12 @@ public struct EmbeddingService {
         let encoder = JSONEncoder()
         request.httpBody = try encoder.encode(EmbeddingRequestBody(
             input: text,
-            model: configuration.model
+            model: model.info.modelName
         ))
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if !configuration.apiKey.isEmpty {
-            switch configuration.featureProvider {
-            case .openAI:
+            switch model.format {
+            case .openAI, .openAICompatible:
                 request.setValue(
                     "Bearer \(configuration.apiKey)",
                     forHTTPHeaderField: "Authorization"
@@ -89,6 +92,9 @@ public struct EmbeddingService {
     }
 
     public func embed(tokens: [[Int]]) async throws -> EmbeddingResponse {
+        guard let model = configuration.model else {
+            throw ChatGPTServiceError.embeddingModelNotAvailable
+        }
         guard let url = URL(string: configuration.endpoint) else {
             throw ChatGPTServiceError.endpointIncorrect
         }
@@ -97,12 +103,12 @@ public struct EmbeddingService {
         let encoder = JSONEncoder()
         request.httpBody = try encoder.encode(EmbeddingFromTokensRequestBody(
             input: tokens,
-            model: configuration.model
+            model: model.info.modelName
         ))
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if !configuration.apiKey.isEmpty {
-            switch configuration.featureProvider {
-            case .openAI:
+            switch model.format {
+            case .openAI, .openAICompatible:
                 request.setValue(
                     "Bearer \(configuration.apiKey)",
                     forHTTPHeaderField: "Authorization"

@@ -94,9 +94,9 @@ Another convenient method to access commands is by using the `⇧⌘/` shortcut 
 
 ### Setting Up Codeium
 
-1. In the host app, switch to the service tab and click Codeium to access the Codeium account settings.
-2. Click "Install" to install the language server.
-3. Click "Sign In", and you will be directed to codeium.com. After signing in, a token will be presented. You will need to paste the token back to the app to finish signing in.
+1. In the host app, navigate to "Service - Codeium" to access the Codeium account settings.
+2. Click on "Install" to install the language server.
+3. Click on "Sign In" and you will be redirected to codeium.com. After signing in, a token will be provided. You need to copy and paste this token back into the app to complete the sign-in process.
 4. Go to "Feature - Suggestion" and update the feature provider to "Codeium".
 
 > The key is stored in the keychain. When the helper app tries to access the key for the first time, it will prompt you to enter the password to access the keychain. Please select "Always Allow" to let the helper app access the key.
@@ -149,7 +149,7 @@ Whenever your code is updated, the app will automatically fetch suggestions for 
 
 ## Limitations
 
-- The extension uses some dirty tricks to get the file and project/workspace paths. It may fail, it may be incorrect, especially when you have multiple Xcode windows running, and maybe even worse when they are in different displays. I am not sure about that though.
+- The extension utilizes various tricks to monitor the state of Xcode. It may fail, it may be incorrect, especially when you have multiple Xcode windows running, and maybe even worse when they are in different displays. I am not sure about that though.
 
 ## License
 

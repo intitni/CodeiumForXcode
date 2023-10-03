@@ -10,6 +10,7 @@ enum LogLevel: String {
 public final class Logger {
     private let subsystem: String
     private let category: String
+    private let osLog: OSLog
 
     public static let service = Logger(category: "Service")
     public static let ui = Logger(category: "UI")
@@ -18,14 +19,15 @@ public final class Logger {
     public static let gitHubCopilot = Logger(category: "GitHubCopilot")
     public static let codeium = Logger(category: "Codeium")
     public static let langchain = Logger(category: "LangChain")
-    public static let python = Logger(category: "Python")
     #if DEBUG
+    /// Use a temp logger to log something temporary. I won't be available in release builds.
     public static let temp = Logger(category: "Temp")
     #endif
 
     public init(subsystem: String = "com.intii.CodeiumForXcode", category: String) {
         self.subsystem = subsystem
         self.category = category
+        osLog = OSLog(subsystem: subsystem, category: category)
     }
 
     func log(level: LogLevel, message: String) {
@@ -39,7 +41,6 @@ public final class Logger {
             osLogType = .error
         }
 
-        let osLog = OSLog(subsystem: subsystem, category: category)
         os_log("%{public}@", log: osLog, type: osLogType, message as CVarArg)
     }
 
@@ -57,5 +58,9 @@ public final class Logger {
 
     public func error(_ error: Error) {
         log(level: .error, message: error.localizedDescription)
+    }
+    
+    public func signpost(_ type: OSSignpostType, name: StaticString) {
+        os_signpost(type, log: osLog, name: name)
     }
 }

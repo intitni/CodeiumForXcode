@@ -44,7 +44,7 @@ final class CodeiumLanguageServer {
 
         let isEnterpriseMode = UserDefaults.shared.value(for: \.codeiumEnterpriseMode)
         var apiServerUrl = "https://server.codeium.com"
-        if isEnterpriseMode && UserDefaults.shared.value(for: \.codeiumApiUrl) != "" {
+        if isEnterpriseMode, UserDefaults.shared.value(for: \.codeiumApiUrl) != "" {
             apiServerUrl = UserDefaults.shared.value(for: \.codeiumApiUrl)
         }
 
@@ -130,7 +130,7 @@ final class CodeiumLanguageServer {
         self.port = port
         launchHandler?()
     }
-    
+
     func terminate() {
         process.terminationHandler = nil
         if process.isRunning {

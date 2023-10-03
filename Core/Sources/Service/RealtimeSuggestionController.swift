@@ -3,7 +3,6 @@ import AppKit
 import AsyncAlgorithms
 import AXExtension
 import AXNotificationStream
-import CGEventObserver
 import Environment
 import Foundation
 import Logger
@@ -12,8 +11,7 @@ import QuartzCore
 import Workspace
 import XcodeInspector
 
-public class RealtimeSuggestionController {
-    let eventObserver: CGEventObserverType = CGEventObserver(eventsOfInterest: [.keyDown])
+public actor RealtimeSuggestionController {
     private var task: Task<Void, Error>?
     private var inflightPrefetchTask: Task<Void, Error>?
     private var windowChangeObservationTask: Task<Void, Error>?
@@ -23,12 +21,12 @@ public class RealtimeSuggestionController {
     private var sourceEditor: SourceEditor?
 
     init() {}
-    
+
+    nonisolated
     func start() {
         Task { [weak self] in
             if let app = ActiveApplicationMonitor.shared.activeXcode {
-                self?.handleXcodeChanged(app)
-                self?.startHIDObservation()
+                await self?.handleXcodeChanged(app)
             }
             var previousApp = ActiveApplicationMonitor.shared.activeXcode
             for await app in ActiveApplicationMonitor.shared.createStream() {
@@ -37,34 +35,10 @@ public class RealtimeSuggestionController {
                 defer { previousApp = app }
 
                 if let app = ActiveApplicationMonitor.shared.activeXcode, app != previousApp {
-                    self.handleXcodeChanged(app)
-                }
-
-                if ActiveApplicationMonitor.shared.activeXcode != nil {
-                    startHIDObservation()
-                } else {
-                    stopHIDObservation()
+                    await self.handleXcodeChanged(app)
                 }
             }
         }
-    }
-
-    private func startHIDObservation() {
-        if task == nil {
-            task = Task { [weak self, eventObserver] in
-                for await event in eventObserver.createStream() {
-                    guard let self else { return }
-                    await self.handleHIDEvent(event: event)
-                }
-            }
-        }
-        eventObserver.activateIfPossible()
-    }
-
-    private func stopHIDObservation() {
-        task?.cancel()
-        task = nil
-        eventObserver.deactivate()
     }
 
     private func handleXcodeChanged(_ app: NSRunningApplication) {
@@ -85,7 +59,7 @@ public class RealtimeSuggestionController {
             for await _ in notifications {
                 guard let self else { return }
                 try Task.checkCancellation()
-                self.handleFocusElementChange()
+                await self.handleFocusElementChange()
             }
         }
     }
@@ -112,7 +86,7 @@ public class RealtimeSuggestionController {
 
         editorObservationTask = Task { [weak self] in
             let fileURL = try await Environment.fetchCurrentFileURL()
-            if let sourceEditor = self?.sourceEditor {
+            if let sourceEditor = await self?.sourceEditor {
                 await PseudoCommandHandler().invalidateRealtimeSuggestionsIfNeeded(
                     fileURL: fileURL,
                     sourceEditor: sourceEditor
@@ -132,11 +106,12 @@ public class RealtimeSuggestionController {
                 switch notification.name {
                 case kAXValueChangedNotification:
                     await cancelInFlightTasks()
-                    self.triggerPrefetchDebounced()
+                    await self.triggerPrefetchDebounced()
                     await self.notifyEditingFileChange(editor: focusElement)
                 case kAXSelectedTextChangedNotification:
-                    guard let sourceEditor else { continue }
-                    let fileURL = XcodeInspector.shared.activeDocumentURL
+                    guard let sourceEditor = await sourceEditor,
+                          let fileURL = XcodeInspector.shared.activeDocumentURL
+                    else { continue }
                     await PseudoCommandHandler().invalidateRealtimeSuggestionsIfNeeded(
                         fileURL: fileURL,
                         sourceEditor: sourceEditor
@@ -164,21 +139,6 @@ public class RealtimeSuggestionController {
                         filespace.codeMetadata.uti = nil
                     }
                 }
-            }
-        }
-    }
-
-    func handleHIDEvent(event: CGEvent) async {
-        guard await Environment.isXcodeActive() else { return }
-
-        let keycode = Int(event.getIntegerValueField(.keyboardEventKeycode))
-        let escape = 0x35
-
-        // Escape should cancel in-flight tasks.
-        // Except that when the completion panel is presented, it should trigger prefetch instead.
-        if keycode == escape {
-            if event.type == .keyDown {
-                await cancelInFlightTasks()
             }
         }
     }
@@ -233,10 +193,10 @@ public class RealtimeSuggestionController {
 
     func notifyEditingFileChange(editor: AXUIElement) async {
         guard let fileURL = try? await Environment.fetchCurrentFileURL(),
-              let (workspace, filespace) = try? await Service.shared.workspacePool
+              let (workspace, _) = try? await Service.shared.workspacePool
               .fetchOrCreateWorkspaceAndFilespace(fileURL: fileURL)
         else { return }
-        workspace.suggestionPlugin?.notifyUpdateFile(filespace: filespace, content: editor.value)
+        await workspace.didUpdateFilespace(fileURL: fileURL, content: editor.value)
     }
 }
 

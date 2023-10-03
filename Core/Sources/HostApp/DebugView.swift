@@ -14,6 +14,8 @@ final class DebugSettings: ObservableObject {
     @AppStorage(\.disableFunctionCalling) var disableFunctionCalling
     @AppStorage(\.disableGitHubCopilotSettingsAutoRefreshOnAppear)
     var disableGitHubCopilotSettingsAutoRefreshOnAppear
+    @AppStorage(\.useUserDefaultsBaseAPIKeychain) var useUserDefaultsBaseAPIKeychain
+    @AppStorage(\.disableEnhancedWorkspace) var disableEnhancedWorkspace
     init() {}
 }
 
@@ -41,17 +43,37 @@ struct DebugSettingsView: View {
                 Toggle(isOn: $settings.triggerActionWithAccessibilityAPI) {
                     Text("Trigger command with AccessibilityAPI")
                 }
-                Toggle(isOn: $settings.alwaysAcceptSuggestionWithAccessibilityAPI) {
-                    Text("Always accept suggestion with Accessibility API")
-                }
-                Toggle(isOn: $settings.enableXcodeInspectorDebugMenu) {
-                    Text("Enable Xcode inspector debug menu")
-                }
-                Toggle(isOn: $settings.disableFunctionCalling) {
-                    Text("Disable function calling for chat feature")
-                }
-                Toggle(isOn: $settings.disableGitHubCopilotSettingsAutoRefreshOnAppear) {
-                    Text("Disable GitHub Copilot settings auto refresh status on appear")
+                Group {
+                    Toggle(isOn: $settings.alwaysAcceptSuggestionWithAccessibilityAPI) {
+                        Text("Always accept suggestion with Accessibility API")
+                    }
+                    Toggle(isOn: $settings.enableXcodeInspectorDebugMenu) {
+                        Text("Enable Xcode inspector debug menu")
+                    }
+                    Toggle(isOn: $settings.disableFunctionCalling) {
+                        Text("Disable function calling for chat feature")
+                    }
+                    Toggle(isOn: $settings.disableGitHubCopilotSettingsAutoRefreshOnAppear) {
+                        Text("Disable GitHub Copilot settings auto refresh status on appear")
+                    }
+                    Toggle(isOn: $settings.useUserDefaultsBaseAPIKeychain) {
+                        Text("Store API keys in UserDefaults")
+                    }
+                    
+                    Toggle(isOn: $settings.disableEnhancedWorkspace) {
+                        Text("Disable Enhanced Workspace")
+                    }
+                    
+                    Button("Reset Migration Version to 0") {
+                        UserDefaults.shared.set(nil, forKey: "OldMigrationVersion")
+                    }
+                    
+                    Button("Reset 0.23.0 migration") {
+                        UserDefaults.shared.set("239", forKey: "OldMigrationVersion")
+                        UserDefaults.shared.set(nil, forKey: "MigrateTo240Finished")
+                        UserDefaults.shared.set(nil, forKey: "ChatModels")
+                        UserDefaults.shared.set(nil, forKey: "EmbeddingModels")
+                    }
                 }
             }
             .padding()

@@ -101,13 +101,6 @@
     },
     {
       "target" : {
-        "containerPath" : "container:Pro",
-        "identifier" : "LicenseManagementTests",
-        "name" : "LicenseManagementTests"
-      }
-    },
-    {
-      "target" : {
         "containerPath" : "container:Core",
         "identifier" : "ActiveDocumentChatContextCollectorTests",
         "name" : "ActiveDocumentChatContextCollectorTests"
@@ -122,9 +115,16 @@
     },
     {
       "target" : {
-        "containerPath" : "container:Pro",
-        "identifier" : "ChatTabPersistentTests",
-        "name" : "ChatTabPersistentTests"
+        "containerPath" : "container:Core",
+        "identifier" : "ServiceUpdateMigrationTests",
+        "name" : "ServiceUpdateMigrationTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Tool",
+        "identifier" : "KeychainTests",
+        "name" : "KeychainTests"
       }
     }
   ],

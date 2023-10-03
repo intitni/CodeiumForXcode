@@ -10,7 +10,7 @@ struct WidgetView: View {
     @State var isHovering: Bool = false
     var onOpenChatClicked: () -> Void = {}
     var onCustomCommandClicked: (CustomCommand) -> Void = { _ in }
-    
+
     @AppStorage(\.hideCircularWidget) var hideCircularWidget
 
     var body: some View {
@@ -19,7 +19,7 @@ struct WidgetView: View {
                 .fill(isHovering ? .white.opacity(0.5) : .white.opacity(0.15))
                 .onTapGesture {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        store.send(.widgetClicked)
+                        // store.send(.widgetClicked)
                     }
                 }
                 .overlay { overlayCircle }
@@ -216,8 +216,9 @@ extension WidgetContextMenu {
     @ViewBuilder
     var enableSuggestionForProject: some View {
         WithViewStore(store) { _ in
-            let projectPath = xcodeInspector.activeProjectURL.path
-            if disableSuggestionFeatureGlobally {
+            if let projectPath = xcodeInspector.activeProjectRootURL?.path,
+               disableSuggestionFeatureGlobally
+            {
                 let matchedPath = suggestionFeatureEnabledProjectList.first { path in
                     projectPath.hasPrefix(path)
                 }
@@ -243,7 +244,7 @@ extension WidgetContextMenu {
     var disableSuggestionForLanguage: some View {
         WithViewStore(store) { _ in
             let fileURL = xcodeInspector.activeDocumentURL
-            let fileLanguage = languageIdentifierFromFileURL(fileURL)
+            let fileLanguage = fileURL.map(languageIdentifierFromFileURL) ?? .plaintext
             let matched = suggestionFeatureDisabledLanguageList.first { rawValue in
                 fileLanguage.rawValue == rawValue
             }
