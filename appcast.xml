@@ -2,6 +2,17 @@
 <rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <title>Codeium for Xcode</title>
+    <item>
+      <title>0.28.3</title>
+      <pubDate>Tue, 12 Dec 2023 15:55:44 +0800</pubDate>
+      <sparkle:version>293</sparkle:version>
+      <sparkle:shortVersionString>0.28.3</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>12.0</sparkle:minimumSystemVersion>
+      <sparkle:releaseNotesLink>
+        https://github.com/intitni/CodeiumForXcode/releases/tag/codeium%2F0.28.3
+      </sparkle:releaseNotesLink>
+      <enclosure url="https://github.com/intitni/CodeiumForXcode/releases/download/codeium%2F0.28.3/Codeium.for.Xcode.app.zip" length="30285250" type="application/octet-stream" sparkle:edSignature="D7pYrK9dOX7nziFnT/E9pQXYy/8b8/eX3E+ZHvd8unscmRdP7V54KXuVoyOxaH1wH7BuFPjhwR/z/H735Wl/Dg=="/>
+    </item>
 
     <item>
       <title>0.24.1</title>

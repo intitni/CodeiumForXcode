@@ -55,6 +55,15 @@
       }
     },
     {
+      "identity" : "keyboardshortcuts",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/intitni/KeyboardShortcuts",
+      "state" : {
+        "branch" : "main",
+        "revision" : "65fb410b0c6d3ed96623b460bab31ffce5f48b4d"
+      }
+    },
+    {
       "identity" : "languageclient",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/ChimeHQ/LanguageClient",
@@ -97,6 +106,24 @@
       "state" : {
         "revision" : "87e4fcbac39912f9cdb9a9acf205cad60e1ca3bc",
         "version" : "2.4.2"
+      }
+    },
+    {
+      "identity" : "sttextkitplus",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/krzyzanowskim/STTextKitPlus",
+      "state" : {
+        "revision" : "5500fa8811ed339605b0861ae0390677863a7bfe",
+        "version" : "0.0.2"
+      }
+    },
+    {
+      "identity" : "sttextview",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/krzyzanowskim/STTextView",
+      "state" : {
+        "revision" : "fee97263602b67a1da2185b2d40877d02c558c53",
+        "version" : "0.8.22"
       }
     },
     {
@@ -219,10 +246,10 @@
     {
       "identity" : "swifttreesitter",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ChimeHQ/SwiftTreeSitter",
+      "location" : "https://github.com/intitni/SwiftTreeSitter.git",
       "state" : {
-        "revision" : "df25a52f72ebc5b50ae20d26d1363793408bb28b",
-        "version" : "0.7.1"
+        "branch" : "main",
+        "revision" : "fd499bfafcccfae12a1a579dc922d8418025a35d"
       }
     },
     {
@@ -250,15 +277,6 @@
       "state" : {
         "branch" : "feature/spm",
         "revision" : "1b54ef0b5efddddf393b45e173788499cc572048"
-      }
-    },
-    {
-      "identity" : "tree-sitter-swift",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/alex-pinkus/tree-sitter-swift",
-      "state" : {
-        "branch" : "with-generated-files",
-        "revision" : "eda05af7ac41adb4eb19c346883c0fa32fe3bdd8"
       }
     },
     {

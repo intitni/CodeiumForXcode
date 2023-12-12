@@ -1,10 +1,11 @@
 import Dependencies
 import Foundation
 import Workspace
+import WorkspaceSuggestionService
+import XcodeInspector
 
-#if canImport(KeyBindingManager)
-import EnhancedWorkspace
-import KeyBindingManager
+#if canImport(ProService)
+import ProService
 #endif
 
 @globalActor public enum ServiceActor {
@@ -22,33 +23,31 @@ public final class Service {
     public let guiController = GraphicalUserInterfaceController()
     public let realtimeSuggestionController = RealtimeSuggestionController()
     public let scheduledCleaner: ScheduledCleaner
-    #if canImport(KeyBindingManager)
-    let keyBindingManager: KeyBindingManager
+    let globalShortcutManager: GlobalShortcutManager
+
+    #if canImport(ProService)
+    let proService: ProService
     #endif
 
     private init() {
         @Dependency(\.workspacePool) var workspacePool
 
-        scheduledCleaner = .init(workspacePool: workspacePool, guiController: guiController)
-        #if canImport(KeyBindingManager)
-        keyBindingManager = .init(
-            workspacePool: workspacePool,
-            acceptSuggestion: {
-                Task {
-                    await PseudoCommandHandler().acceptSuggestion()
-                }
-            }
-        )
-        #endif
-
+        scheduledCleaner = .init()
         workspacePool.registerPlugin { SuggestionServiceWorkspacePlugin(workspace: $0) }
-        #if canImport(EnhancedWorkspace)
-        if !UserDefaults.shared.value(for: \.disableEnhancedWorkspace) {
-            workspacePool.registerPlugin { EnhancedWorkspacePlugin(workspace: $0) }
+        self.workspacePool = workspacePool
+        globalShortcutManager = .init(guiController: guiController)
+
+        #if canImport(ProService)
+        proService = withDependencies { dependencyValues in
+            dependencyValues.proServiceAcceptSuggestion = {
+                Task { await PseudoCommandHandler().acceptSuggestion() }
+            }
+        } operation: {
+            ProService()
         }
         #endif
 
-        self.workspacePool = workspacePool
+        scheduledCleaner.service = self
     }
 
     @MainActor
@@ -56,10 +55,11 @@ public final class Service {
         scheduledCleaner.start()
         realtimeSuggestionController.start()
         guiController.start()
-        #if canImport(KeyBindingManager)
-        keyBindingManager.start()
+        #if canImport(ProService)
+        proService.start()
         #endif
         DependencyUpdater().update()
+        globalShortcutManager.start()
     }
 }
 

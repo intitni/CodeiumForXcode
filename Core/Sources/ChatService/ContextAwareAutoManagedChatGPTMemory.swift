@@ -7,24 +7,16 @@ public final class ContextAwareAutoManagedChatGPTMemory: ChatGPTMemory {
     let functionProvider: ChatFunctionProvider
     weak var chatService: ChatService?
 
-    public var messages: [ChatMessage] {
-        get async { await memory.messages }
-    }
-
-    public var remainingTokens: Int? {
-        get async { await memory.remainingTokens }
-    }
-    
     public var history: [ChatMessage] {
         get async { await memory.history }
     }
-    
+
     func observeHistoryChange(_ observer: @escaping () -> Void) {
         memory.observeHistoryChange(observer)
     }
 
     init(
-        configuration: ChatGPTConfiguration,
+        configuration: OverridingChatGPTConfiguration,
         functionProvider: ChatFunctionProvider
     ) {
         memory = AutoManagedChatGPTMemory(
@@ -45,14 +37,17 @@ public final class ContextAwareAutoManagedChatGPTMemory: ChatGPTMemory {
         await memory.mutateHistory(update)
     }
 
-    public func refresh() async {
+    public func generatePrompt() async -> ChatGPTPrompt {
         let content = (await memory.history)
             .last(where: { $0.role == .user || $0.role == .function })?.content
-        try? await contextController.updatePromptToMatchContent(systemPrompt: """
-        \(chatService?.systemPrompt ?? "")
-        \(chatService?.extraSystemPrompt ?? "")
-        """, content: content ?? "")
-        await memory.refresh()
+        try? await contextController.collectContextInformation(
+            systemPrompt: """
+            \(chatService?.systemPrompt ?? "")
+            \(chatService?.extraSystemPrompt ?? "")
+            """,
+            content: content ?? ""
+        )
+        return await memory.generatePrompt()
     }
 }
 

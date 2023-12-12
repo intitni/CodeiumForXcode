@@ -7,19 +7,11 @@ import Workspace
 import XcodeInspector
 
 public final class ScheduledCleaner {
-    let workspacePool: WorkspacePool
-    let guiController: GraphicalUserInterfaceController
+    weak var service: Service?
 
-    init(
-        workspacePool: WorkspacePool,
-        guiController: GraphicalUserInterfaceController
-    ) {
-        self.workspacePool = workspacePool
-        self.guiController = guiController
-    }
+    init() {}
 
     func start() {
-        // occasionally cleanup workspaces.
         Task { @ServiceActor in
             while !Task.isCancelled {
                 try await Task.sleep(nanoseconds: 10 * 60 * 1_000_000_000)
@@ -27,9 +19,8 @@ public final class ScheduledCleaner {
             }
         }
 
-        // cleanup when Xcode becomes inactive
         Task { @ServiceActor in
-            for await app in ActiveApplicationMonitor.shared.createStream() {
+            for await app in ActiveApplicationMonitor.shared.createInfoStream() {
                 try Task.checkCancellation()
                 if let app, !app.isXcode {
                     await cleanUp()
@@ -40,6 +31,8 @@ public final class ScheduledCleaner {
 
     @ServiceActor
     func cleanUp() async {
+        guard let service else { return }
+        
         let workspaceInfos = XcodeInspector.shared.xcodes.reduce(
             into: [
                 XcodeAppInstanceInspector.WorkspaceIdentifier:
@@ -55,18 +48,18 @@ public final class ScheduledCleaner {
                 }
             }
         }
-        for (url, workspace) in workspacePool.workspaces {
+        for (url, workspace) in service.workspacePool.workspaces {
             if workspace.isExpired, workspaceInfos[.url(url)] == nil {
                 Logger.service.info("Remove idle workspace")
                 _ = await Task { @MainActor in
-                    guiController.viewStore.send(
+                    service.guiController.viewStore.send(
                         .promptToCodeGroup(.discardExpiredPromptToCode(documentURLs: Array(
                             workspace.filespaces.keys
                         )))
                     )
                 }.result
                 await workspace.cleanUp(availableTabs: [])
-                workspacePool.removeWorkspace(url: url)
+                service.workspacePool.removeWorkspace(url: url)
             } else {
                 let tabs = (workspaceInfos[.url(url)]?.tabs ?? [])
                     .union(workspaceInfos[.unknown]?.tabs ?? [])
@@ -79,7 +72,7 @@ public final class ScheduledCleaner {
                     ) {
                         Logger.service.info("Remove idle filespace")
                         _ = await Task { @MainActor in
-                            guiController.viewStore.send(
+                            service.guiController.viewStore.send(
                                 .promptToCodeGroup(.discardExpiredPromptToCode(documentURLs: [url]))
                             )
                         }.result
@@ -89,11 +82,16 @@ public final class ScheduledCleaner {
                 await workspace.cleanUp(availableTabs: tabs)
             }
         }
+        
+        #if canImport(ProService)
+        await service.proService.cleanUp(workspaceInfos: workspaceInfos)
+        #endif
     }
 
     @ServiceActor
     public func closeAllChildProcesses() async {
-        for (_, workspace) in workspacePool.workspaces {
+        guard let service else { return }
+        for (_, workspace) in service.workspacePool.workspaces {
             await workspace.terminateSuggestionService()
         }
     }

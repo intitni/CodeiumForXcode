@@ -31,6 +31,7 @@ enum ChatTabFactory {
                 ),
                 title: BrowserChatTab.name
             ),
+            folderIfNeeded(TerminalChatTab.chatBuilders(), title: TerminalChatTab.name),
         ].compactMap { $0 }
 
         return collection
@@ -91,7 +92,8 @@ enum ChatTabFactory {
                             language: .plaintext,
                             documentURL: .init(fileURLWithPath: "/"),
                             projectRootURL: .init(fileURLWithPath: "/"),
-                            allCode: prompt,
+                            content: prompt,
+                            lines: prompt.breakLines(),
                             range: .outOfScope
                         ),
                         isDetached: true,

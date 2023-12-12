@@ -55,7 +55,7 @@ Open the app, the app will create a launch agent to setup a background running S
 
 Enable the extension in `System Settings.app`.
 
-From the Apple menu located in the top-left corner of your screen click `System Settings`. Navigate to `Privacy & Security` then toward the bottom click `Extensions`. Click `Xcode Source Editor` and tick `Copilot`.
+From the Apple menu located in the top-left corner of your screen click `System Settings`. Navigate to `Privacy & Security` then toward the bottom click `Extensions`. Click `Xcode Source Editor` and tick `Codeium`.
 
 If you are using macOS Monterey, enter the `Extensions` menu in `System Preferences.app` with its dedicated icon.
 
@@ -85,8 +85,6 @@ A [recommended setup](https://github.com/intitni/CopilotForXcode/issues/14) that
 | Reject Suggestion   | `⌥{`                                                   |
 | Next Suggestion     | `⌥>`                                                   |
 | Previous Suggestion | `⌥<`                                                   |
-| Open Chat           | `⌥"`                                                   |
-| Explain Selection   | `⌥\|`                                                  |
 
 Essentially using `⌥⇧` as the "access" key combination for all bindings.
 

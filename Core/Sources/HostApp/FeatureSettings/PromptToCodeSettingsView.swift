@@ -1,4 +1,10 @@
+import Preferences
+import SharedUIComponents
 import SwiftUI
+
+#if canImport(ProHostApp)
+import ProHostApp
+#endif
 
 struct PromptToCodeSettingsView: View {
     final class Settings: ObservableObject {
@@ -30,7 +36,7 @@ struct PromptToCodeSettingsView: View {
                     selection: $settings.promptToCodeChatModelId
                 ) {
                     Text("Same as Chat Feature").tag("")
-                    
+
                     if !settings.chatModels
                         .contains(where: { $0.id == settings.promptToCodeChatModelId }),
                         !settings.promptToCodeChatModelId.isEmpty
@@ -52,7 +58,7 @@ struct PromptToCodeSettingsView: View {
                     selection: $settings.promptToCodeEmbeddingModelId
                 ) {
                     Text("Same as Chat Feature").tag("")
-                    
+
                     if !settings.embeddingModels
                         .contains(where: { $0.id == settings.promptToCodeEmbeddingModelId }),
                         !settings.promptToCodeEmbeddingModelId.isEmpty
@@ -78,16 +84,7 @@ struct PromptToCodeSettingsView: View {
                 }
             }
 
-            Divider()
-
-            Text("Mirroring Settings of Suggestion Feature")
-                .foregroundColor(.white)
-                .padding(.vertical, 2)
-                .padding(.horizontal, 8)
-                .background(
-                    Color.accentColor,
-                    in: RoundedRectangle(cornerRadius: 20)
-                )
+            SettingsDivider("Mirroring Settings of Suggestion Feature")
 
             Form {
                 Toggle(isOn: $settings.hideCommonPrecedingSpacesInSuggestion) {
@@ -107,13 +104,49 @@ struct PromptToCodeSettingsView: View {
                     Text("pt")
                 }.disabled(true)
             }
+            
+            ScopeForm()
+        }
+    }
+    
+    struct ScopeForm: View {
+        class Settings: ObservableObject {
+            @AppStorage(\.enableSenseScopeByDefaultInPromptToCode)
+            var enableSenseScopeByDefaultInPromptToCode: Bool
+            init() {}
+        }
+
+        @StateObject var settings = Settings()
+
+        var body: some View {
+            SettingsDivider("Scopes")
+
+            VStack {
+                #if canImport(ProHostApp)
+
+                SubSection(
+                    title: WithFeatureEnabled(\.senseScopeInChat, alignment: .trailing) {
+                        Text("Sense Scope (Experimental)")
+                    },
+                    description: "Experimental. Enable the bot to read the relevant code of the editing file in the project, third party packages and the SDK."
+                ) {
+                    WithFeatureEnabled(\.projectScopeInChat, alignment: .hidden) {
+                        Form {
+                            Toggle(isOn: $settings.enableSenseScopeByDefaultInPromptToCode) {
+                                Text("Enable by default")
+                            }
+                        }
+                    }
+                }
+
+                #endif
+            }
         }
     }
 }
 
-struct PromptToCodeSettingsView_Previews: PreviewProvider {
-    static var previews: some View {
-        PromptToCodeSettingsView()
-    }
+#Preview {
+    PromptToCodeSettingsView()
+        .padding()
 }
 

@@ -1,5 +1,6 @@
 import LanguageServerProtocol
 
+/// Line starts at 0.
 public typealias CursorPosition = LanguageServerProtocol.Position
 
 public extension CursorPosition {
@@ -45,6 +46,10 @@ public struct CursorRange: Codable, Hashable, Sendable, Equatable, CustomStringC
 
     public var isEmpty: Bool {
         return start == end
+    }
+    
+    public var isOneLine: Bool {
+        return start.line == end.line
     }
     
     public static func == (lhs: CursorRange, rhs: CursorRange) -> Bool {

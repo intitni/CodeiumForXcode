@@ -1,3 +1,4 @@
+import AppKit
 import ChatService
 import Environment
 import Foundation
@@ -10,6 +11,7 @@ import SuggestionModel
 import SuggestionWidget
 import UserNotifications
 import Workspace
+import WorkspaceSuggestionService
 import XPCShared
 
 struct WindowBaseCommandHandler: SuggestionCommandHandler {
@@ -409,6 +411,10 @@ extension WindowBaseCommandHandler {
 
         let viewStore = Service.shared.guiController.viewStore
 
+        let customCommandTemplateProcessor = CustomCommandTemplateProcessor()
+        let newExtraSystemPrompt = extraSystemPrompt.map(customCommandTemplateProcessor.process)
+        let newPrompt = prompt.map(customCommandTemplateProcessor.process)
+
         _ = await Task { @MainActor in
             // if there is already a prompt to code presenting, we should not present another one
             viewStore.send(.promptToCodeGroup(.activateOrCreatePromptToCode(.init(
@@ -419,11 +425,12 @@ extension WindowBaseCommandHandler {
                 usesTabsForIndentation: filespace.codeMetadata.usesTabsForIndentation ?? false,
                 documentURL: fileURL,
                 projectRootURL: workspace.projectRootURL,
-                allCode: editor.content,
+                allCode: editor.content, 
+                allLines: editor.lines,
                 isContinuous: isContinuous,
                 commandName: name,
-                defaultPrompt: prompt ?? "",
-                extraSystemPrompt: extraSystemPrompt,
+                defaultPrompt: newPrompt ?? "",
+                extraSystemPrompt: newExtraSystemPrompt,
                 generateDescriptionRequirement: generateDescription
             ))))
         }.result

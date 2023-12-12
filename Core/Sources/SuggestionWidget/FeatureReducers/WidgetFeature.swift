@@ -1,4 +1,5 @@
 import ActiveApplicationMonitor
+import AppActivator
 import AsyncAlgorithms
 import AXNotificationStream
 import ComposableArchitecture
@@ -20,6 +21,11 @@ public struct WidgetFeature: ReducerProtocol {
         public var suggestionPanelWindowState = WindowState()
         public var sharedPanelWindowState = WindowState()
         public var tabWindowState = WindowState()
+    }
+
+    public enum WindowCanBecomeKey: Equatable {
+        case sharedPanel
+        case chatPanel
     }
 
     public struct State: Equatable {
@@ -79,7 +85,7 @@ public struct WidgetFeature: ReducerProtocol {
                 )
             }
         }
-        
+
         var lastUpdateWindowOpacityTime = Date(timeIntervalSince1970: 0)
 
         public init() {}
@@ -109,9 +115,10 @@ public struct WidgetFeature: ReducerProtocol {
         case updateColorScheme
 
         case updateWindowLocation(animated: Bool)
-        case updateWindowOpacity
+        case updateWindowOpacity(immediately: Bool)
         case updateFocusingDocumentURL
         case updateWindowOpacityFinished
+        case updateKeyWindow(WindowCanBecomeKey)
 
         case panel(PanelFeature.Action)
         case chatPanel(ChatPanelFeature.Action)
@@ -124,9 +131,10 @@ public struct WidgetFeature: ReducerProtocol {
 
     @Dependency(\.suggestionWidgetUserDefaultsObservers) var userDefaultsObservers
     @Dependency(\.suggestionWidgetControllerDependency) var suggestionWidgetControllerDependency
-    @Dependency(\.activeApplicationMonitor) var activeApplicationMonitor
     @Dependency(\.xcodeInspector) var xcodeInspector
     @Dependency(\.mainQueue) var mainQueue
+    @Dependency(\.activateThisApp) var activateThisApp
+    @Dependency(\.activatePreviousActiveApp) var activatePreviousActiveApp
 
     public enum DebounceKey: Hashable {
         case updateWindowOpacity
@@ -147,8 +155,8 @@ public struct WidgetFeature: ReducerProtocol {
                 }
 
             case .circularWidget(.widgetClicked):
-                let isDisplayingContent = state._circularWidgetState.isDisplayingContent
-                if isDisplayingContent {
+                let wasDisplayingContent = state._circularWidgetState.isDisplayingContent
+                if wasDisplayingContent {
                     state.panelState.sharedPanelState.isPanelDisplayed = false
                     state.panelState.suggestionPanelState.isPanelDisplayed = false
                     state.chatPanelState.isPanelDisplayed = false
@@ -157,11 +165,26 @@ public struct WidgetFeature: ReducerProtocol {
                     state.panelState.suggestionPanelState.isPanelDisplayed = true
                     state.chatPanelState.isPanelDisplayed = true
                 }
-                return .run { _ in
-                    guard isDisplayingContent else { return }
-                    if let app = activeApplicationMonitor.previousApp, app.isXcode {
-                        try await Task.sleep(nanoseconds: 200_000_000)
-                        app.activate()
+
+                let isDisplayingContent = state._circularWidgetState.isDisplayingContent
+                let hasChat = state.chatPanelState.chatTabGroup.selectedTabInfo != nil
+                let hasPromptToCode = state.panelState.sharedPanelState.content
+                    .promptToCodeGroup.activePromptToCode != nil
+
+                return .run { send in
+                    if isDisplayingContent {
+                        if hasPromptToCode {
+                            await send(.updateKeyWindow(.sharedPanel))
+                        } else if hasChat {
+                            await send(.updateKeyWindow(.chatPanel))
+                        }
+                        await send(.chatPanel(.focusActiveChatTab))
+                    }
+
+                    if isDisplayingContent, !(await NSApplication.shared.isActive) {
+                        activateThisApp()
+                    } else if !isDisplayingContent {
+                        activatePreviousActiveApp()
                     }
                 }
 
@@ -183,7 +206,7 @@ public struct WidgetFeature: ReducerProtocol {
                 let isDetached = state.chatPanelState.chatPanelInASeparateWindow
                 return .run { send in
                     await send(.updateWindowLocation(animated: false))
-                    await send(.updateWindowOpacity)
+                    await send(.updateWindowOpacity(immediately: false))
                     if isDetached {
                         Task { @MainActor in
                             windows.chatPanelWindow.alphaValue = 1
@@ -194,7 +217,7 @@ public struct WidgetFeature: ReducerProtocol {
                 let isDetached = state.chatPanelState.chatPanelInASeparateWindow
                 return .run { send in
                     await send(.updateWindowLocation(animated: !isDetached))
-                    await send(.updateWindowOpacity)
+                    await send(.updateWindowOpacity(immediately: false))
                 }
             default: return .none
             }
@@ -213,13 +236,23 @@ public struct WidgetFeature: ReducerProtocol {
 
             case .observeActiveApplicationChange:
                 return .run { send in
-                    var previousApp: NSRunningApplication?
-                    for await app in activeApplicationMonitor.createStream() {
+                    let stream = AsyncStream<NSRunningApplication> { continuation in
+                        let cancellable = xcodeInspector.$activeApplication.sink { newValue in
+                            guard let newValue else { return }
+                            continuation.yield(newValue.runningApplication)
+                        }
+                        continuation.onTermination = { _ in
+                            cancellable.cancel()
+                        }
+                    }
+
+                    var previousAppIdentifier: pid_t?
+                    for await app in stream {
                         try Task.checkCancellation()
-                        if app != previousApp {
+                        if app.processIdentifier != previousAppIdentifier {
                             await send(.updateActiveApplication)
                         }
-                        previousApp = app
+                        previousAppIdentifier = app.processIdentifier
                     }
                 }.cancellable(id: CancelID.observeActiveApplicationChange, cancelInFlight: true)
 
@@ -245,7 +278,7 @@ public struct WidgetFeature: ReducerProtocol {
                     for await _ in stream {
                         try Task.checkCancellation()
                         await send(.updateWindowLocation(animated: false))
-                        await send(.updateWindowOpacity)
+                        await send(.updateWindowOpacity(immediately: false))
                     }
                 }.cancellable(id: CancelID.observeCompletionPanelChange, cancelInFlight: true)
 
@@ -255,10 +288,11 @@ public struct WidgetFeature: ReducerProtocol {
                         .notifications(named: NSWorkspace.activeSpaceDidChangeNotification)
                     for await _ in sequence {
                         try Task.checkCancellation()
-                        guard let activeXcode = activeApplicationMonitor.activeXcode
-                        else { continue }
+                        guard let activeXcode = xcodeInspector.activeXcode else { continue }
                         guard await windows.fullscreenDetector.isOnActiveSpace else { continue }
-                        let app = AXUIElementCreateApplication(activeXcode.processIdentifier)
+                        let app = AXUIElementCreateApplication(
+                            activeXcode.runningApplication.processIdentifier
+                        )
                         if let _ = app.focusedWindow {
                             await windows.orderFront()
                         }
@@ -309,28 +343,29 @@ public struct WidgetFeature: ReducerProtocol {
                 }.cancellable(id: CancelID.observeUserDefaults, cancelInFlight: true)
 
             case .observeWindowChange:
-                guard let app = activeApplicationMonitor.activeApplication else { return .none }
+                guard let app = xcodeInspector.activeApplication else { return .none }
                 guard app.isXcode else { return .none }
-                
+
                 let documentURL = state.focusingDocumentURL
 
-                return .run { [app] send in
-                    await send(.observeEditorChange)
+                let notifications = AXNotificationStream(
+                    app: app.runningApplication,
+                    notificationNames:
+                    kAXApplicationActivatedNotification,
+                    kAXMovedNotification,
+                    kAXResizedNotification,
+                    kAXMainWindowChangedNotification,
+                    kAXFocusedWindowChangedNotification,
+                    kAXFocusedUIElementChangedNotification,
+                    kAXWindowMovedNotification,
+                    kAXWindowResizedNotification,
+                    kAXWindowMiniaturizedNotification,
+                    kAXWindowDeminiaturizedNotification
+                )
 
-                    let notifications = AXNotificationStream(
-                        app: app,
-                        notificationNames:
-                        kAXApplicationActivatedNotification,
-                        kAXMovedNotification,
-                        kAXResizedNotification,
-                        kAXMainWindowChangedNotification,
-                        kAXFocusedWindowChangedNotification,
-                        kAXFocusedUIElementChangedNotification,
-                        kAXWindowMovedNotification,
-                        kAXWindowResizedNotification,
-                        kAXWindowMiniaturizedNotification,
-                        kAXWindowDeminiaturizedNotification
-                    )
+                return .run { send in
+                    await send(.observeEditorChange)
+                    await send(.panel(.switchToAnotherEditorAndUpdateContent))
 
                     for await notification in notifications {
                         try Task.checkCancellation()
@@ -357,72 +392,73 @@ public struct WidgetFeature: ReducerProtocol {
                             kAXFocusedWindowChangedNotification,
                         ].contains(notification.name) {
                             await send(.updateWindowLocation(animated: false))
-                            await send(.updateWindowOpacity)
+                            await send(.updateWindowOpacity(immediately: false))
                             await send(.observeEditorChange)
                             await send(.panel(.switchToAnotherEditorAndUpdateContent))
                         } else {
                             await send(.updateWindowLocation(animated: false))
-                            await send(.updateWindowOpacity)
+                            await send(.updateWindowOpacity(immediately: false))
                         }
                     }
                 }.cancellable(id: CancelID.observeWindowChange, cancelInFlight: true)
 
             case .observeEditorChange:
-                guard let app = activeApplicationMonitor.activeApplication else { return .none }
-                return .run { send in
-                    let appElement = AXUIElementCreateApplication(app.processIdentifier)
-                    if let focusedElement = appElement.focusedElement,
-                       focusedElement.description == "Source Editor",
-                       let scrollView = focusedElement.parent,
-                       let scrollBar = scrollView.verticalScrollBar
-                    {
-                        let selectionRangeChange = AXNotificationStream(
-                            app: app,
-                            element: focusedElement,
-                            notificationNames: kAXSelectedTextChangedNotification
-                        )
-                        let scroll = AXNotificationStream(
-                            app: app,
-                            element: scrollBar,
-                            notificationNames: kAXValueChangedNotification
-                        )
+                guard let app = xcodeInspector.activeApplication else { return .none }
+                let appElement = AXUIElementCreateApplication(
+                    app.runningApplication.processIdentifier
+                )
+                guard let focusedElement = appElement.focusedElement,
+                      focusedElement.description == "Source Editor",
+                      let scrollView = focusedElement.parent,
+                      let scrollBar = scrollView.verticalScrollBar
+                else { return .none }
 
-                        if #available(macOS 13.0, *) {
-                            for await _ in merge(
-                                selectionRangeChange.debounce(for: Duration.milliseconds(500)),
-                                scroll
-                            ) {
-                                guard activeApplicationMonitor.latestXcode != nil
-                                else { return }
-                                try Task.checkCancellation()
-                                await send(.updateWindowLocation(animated: false))
-                                await send(.updateWindowOpacity)
-                            }
-                        } else {
-                            for await _ in merge(selectionRangeChange, scroll) {
-                                guard activeApplicationMonitor.latestXcode != nil
-                                else { return }
-                                try Task.checkCancellation()
-                                await send(.updateWindowLocation(animated: false))
-                                await send(.updateWindowOpacity)
-                            }
+                let selectionRangeChange = AXNotificationStream(
+                    app: app.runningApplication,
+                    element: focusedElement,
+                    notificationNames: kAXSelectedTextChangedNotification
+                )
+                let scroll = AXNotificationStream(
+                    app: app.runningApplication,
+                    element: scrollBar,
+                    notificationNames: kAXValueChangedNotification
+                )
+
+                return .run { send in
+                    if #available(macOS 13.0, *) {
+                        for await _ in merge(
+                            selectionRangeChange.debounce(for: Duration.milliseconds(500)),
+                            scroll
+                        ) {
+                            guard xcodeInspector.latestActiveXcode != nil else { return }
+                            try Task.checkCancellation()
+                            await send(.updateWindowLocation(animated: false))
+                            await send(.updateWindowOpacity(immediately: false))
+                        }
+                    } else {
+                        for await _ in merge(selectionRangeChange, scroll) {
+                            guard xcodeInspector.latestActiveXcode != nil else { return }
+                            try Task.checkCancellation()
+                            await send(.updateWindowLocation(animated: false))
+                            await send(.updateWindowOpacity(immediately: false))
                         }
                     }
+
                 }.cancellable(id: CancelID.observeEditorChange, cancelInFlight: true)
 
             case .updateActiveApplication:
-                if let app = activeApplicationMonitor.activeApplication, app.isXcode {
+                if let app = xcodeInspector.activeApplication, app.isXcode {
                     return .run { send in
                         await send(.panel(.switchToAnotherEditorAndUpdateContent))
                         await send(.updateWindowLocation(animated: false))
-                        await send(.updateWindowOpacity)
+                        await send(.updateWindowOpacity(immediately: true))
                         await windows.orderFront()
                         await send(.observeWindowChange)
                     }
                 }
                 return .run { send in
                     await send(.updateWindowLocation(animated: false))
-                    await send(.updateWindowOpacity)
+                    await send(.updateWindowOpacity(immediately: true))
                 }
 
             case .updateColorScheme:
@@ -447,7 +483,7 @@ public struct WidgetFeature: ReducerProtocol {
                 state.panelState.suggestionPanelState.colorScheme = scheme
                 state.chatPanelState.colorScheme = scheme
                 return .none
-                
+
             case .updateFocusingDocumentURL:
                 state.focusingDocumentURL = xcodeInspector.realtimeActiveDocumentURL
                 return .none
@@ -513,17 +549,23 @@ public struct WidgetFeature: ReducerProtocol {
                     }
                 }
 
-            case .updateWindowOpacity:
+                #warning("TODO: control windows in their dedicated reducers.")
+            case let .updateWindowOpacity(immediately):
                 let isChatPanelDetached = state.chatPanelState.chatPanelInASeparateWindow
                 let hasChat = !state.chatPanelState.chatTabGroup.tabInfo.isEmpty
-                let shouldDebounce = Date().timeIntervalSince(state.lastUpdateWindowOpacityTime) < 1
+                let shouldDebounce = !immediately &&
+                    Date().timeIntervalSince(state.lastUpdateWindowOpacityTime) < 1
                 return .run { send in
+                    let activeApp = xcodeInspector.activeApplication
                     if shouldDebounce {
                         try await mainQueue.sleep(for: .seconds(0.2))
                     }
+                    try Task.checkCancellation()
                     let task = Task { @MainActor in
-                        if let app = activeApplicationMonitor.activeApplication, app.isXcode {
-                            let application = AXUIElementCreateApplication(app.processIdentifier)
+                        if let activeApp, activeApp.isXcode {
+                            let application = AXUIElementCreateApplication(
+                                activeApp.runningApplication.processIdentifier
+                            )
                             /// We need this to hide the windows when Xcode is minimized.
                             let noFocus = application.focusedWindow == nil
                             windows.sharedPanelWindow.alphaValue = noFocus ? 0 : 1
@@ -536,9 +578,7 @@ public struct WidgetFeature: ReducerProtocol {
                             } else {
                                 windows.chatPanelWindow.alphaValue = noFocus ? 0 : 1
                             }
-                        } else if let app = activeApplicationMonitor.activeApplication,
-                                  app.bundleIdentifier == Bundle.main.bundleIdentifier
-                        {
+                        } else if let activeApp, activeApp.isExtensionService {
                             let noFocus = {
                                 guard let xcode = xcodeInspector.latestActiveXcode
                                 else { return true }
@@ -574,10 +614,20 @@ public struct WidgetFeature: ReducerProtocol {
                     await send(.updateWindowOpacityFinished)
                 }
                 .cancellable(id: DebounceKey.updateWindowOpacity, cancelInFlight: true)
-                
+
             case .updateWindowOpacityFinished:
                 state.lastUpdateWindowOpacityTime = Date()
                 return .none
+
+            case let .updateKeyWindow(window):
+                return .run { _ in
+                    switch window {
+                    case .chatPanel:
+                        await windows.chatPanelWindow.makeKeyAndOrderFront(nil)
+                    case .sharedPanel:
+                        await windows.sharedPanelWindow.makeKeyAndOrderFront(nil)
+                    }
+                }
 
             case .circularWidget:
                 return .none
@@ -590,7 +640,9 @@ public struct WidgetFeature: ReducerProtocol {
             }
         }
     }
+}
 
+extension WidgetFeature {
     @MainActor
     func hidePanelWindows() {
         windows.sharedPanelWindow.alphaValue = 0

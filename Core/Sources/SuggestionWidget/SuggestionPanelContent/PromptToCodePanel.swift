@@ -290,7 +290,7 @@ extension PromptToCodePanel {
 
     struct Toolbar: View {
         let store: StoreOf<PromptToCode>
-        @FocusState var isInputAreaFocused: Bool
+        @FocusState var focusField: PromptToCode.State.FocusField?
 
         struct RevertButtonState: Equatable {
             var isResponding: Bool
@@ -299,6 +299,7 @@ extension PromptToCodePanel {
 
         struct InputFieldState: Equatable {
             @BindingViewState var prompt: String
+            @BindingViewState var focusField: PromptToCode.State.FocusField?
             var isResponding: Bool
         }
 
@@ -326,14 +327,11 @@ extension PromptToCodePanel {
                     .keyboardShortcut(KeyEquivalent.return, modifiers: [.shift])
                 }
                 .background {
-                    Button(action: { isInputAreaFocused = true }) {
+                    Button(action: { focusField = .textField }) {
                         EmptyView()
                     }
                     .keyboardShortcut("l", modifiers: [.command])
                 }
-            }
-            .onAppear {
-                isInputAreaFocused = true
             }
             .padding(8)
             .background(.ultraThickMaterial)
@@ -366,31 +364,26 @@ extension PromptToCodePanel {
         var inputField: some View {
             WithViewStore(
                 store,
-                observe: { InputFieldState(prompt: $0.$prompt, isResponding: $0.isResponding) }
-            ) { viewStore in
-                ZStack(alignment: .center) {
-                    // a hack to support dynamic height of TextEditor
-                    Text(viewStore.state.prompt.isEmpty ? "Hi" : viewStore.state.prompt)
-                        .opacity(0)
-                        .font(.system(size: 14))
-                        .frame(maxWidth: .infinity, maxHeight: 400)
-                        .padding(.top, 1)
-                        .padding(.bottom, 2)
-                        .padding(.horizontal, 4)
-
-                    CustomTextEditor(
-                        text: viewStore.$prompt,
-                        font: .systemFont(ofSize: 14),
-                        isEditable: !viewStore.state.isResponding,
-                        onSubmit: { viewStore.send(.modifyCodeButtonTapped) }
+                observe: {
+                    InputFieldState(
+                        prompt: $0.$prompt,
+                        focusField: $0.$focusedField,
+                        isResponding: $0.isResponding
                     )
-                    .padding(.top, 1)
-                    .padding(.bottom, -1)
-                    .opacity(viewStore.state.isResponding ? 0.5 : 1)
-                    .disabled(viewStore.state.isResponding)
                 }
+            ) { viewStore in
+                AutoresizingCustomTextEditor(
+                    text: viewStore.$prompt,
+                    font: .systemFont(ofSize: 14),
+                    isEditable: !viewStore.state.isResponding,
+                    maxHeight: 400,
+                    onSubmit: { viewStore.send(.modifyCodeButtonTapped) }
+                )
+                .opacity(viewStore.state.isResponding ? 0.5 : 1)
+                .disabled(viewStore.state.isResponding)
+                .focused($focusField, equals: .textField)
+                .bind(viewStore.$focusField, to: $focusField)
             }
-            .focused($isInputAreaFocused)
             .padding(8)
             .fixedSize(horizontal: false, vertical: true)
         }
@@ -430,6 +423,7 @@ struct PromptToCodePanel_Preview: PreviewProvider {
             projectRootURL: URL(fileURLWithPath: "path/to/file.txt"),
             documentURL: URL(fileURLWithPath: "path/to/file.txt"),
             allCode: "",
+            allLines: [],
             commandName: "Generate Code",
             description: "Hello world",
             isResponding: false,
@@ -460,6 +454,7 @@ struct PromptToCodePanel_Error_Detached_Preview: PreviewProvider {
             projectRootURL: URL(fileURLWithPath: "path/to/file.txt"),
             documentURL: URL(fileURLWithPath: "path/to/file.txt"),
             allCode: "",
+            allLines: [],
             commandName: "Generate Code",
             description: "Hello world",
             isResponding: false,

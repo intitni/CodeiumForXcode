@@ -34,7 +34,7 @@ class SourceEditorExtension: NSObject, XCSourceEditorExtension {
     }
 
     var commandDefinitions: [[XCSourceEditorCommandDefinitionKey: Any]] {
-        return builtin + custom + internalUse
+        return builtin + internalUse
     }
 
     func extensionDidFinishLaunching() {
