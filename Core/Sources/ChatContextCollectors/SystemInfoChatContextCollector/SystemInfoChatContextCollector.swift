@@ -13,14 +13,19 @@ public final class SystemInfoChatContextCollector: ChatContextCollector {
 
     public func generateContext(
         history: [ChatMessage],
-        scopes: Set<String>,
+        scopes: Set<ChatContext.Scope>,
         content: String,
         configuration: ChatGPTConfiguration
-    ) -> ChatContext? {
+    ) -> ChatContext {
         return .init(
             systemPrompt: """
-            Current Time: \(Self.dateFormatter.string(from: Date())) (You can use it to calculate time in another time zone)
+            ## System Info
+            
+            Current Time: \(
+                Self.dateFormatter.string(from: Date())
+            ) (You can use it to calculate time in another time zone)
             """,
+            retrievedContent: [],
             functions: []
         )
     }

@@ -1,4 +1,6 @@
 import ActiveApplicationMonitor
+import AppActivator
+import AppKit
 import ChatService
 import ComposableArchitecture
 import Foundation
@@ -12,7 +14,7 @@ import SuggestionWidget
 final class WidgetDataSource {}
 
 extension WidgetDataSource: SuggestionWidgetDataSource {
-    func suggestionForFile(at url: URL) async -> SuggestionProvider? {
+    func suggestionForFile(at url: URL) async -> CodeSuggestionProvider? {
         for workspace in Service.shared.workspacePool.workspaces.values {
             if let filespace = workspace.filespaces[url],
                let suggestion = filespace.presentingSuggestion
@@ -39,24 +41,14 @@ extension WidgetDataSource: SuggestionWidgetDataSource {
                         Task {
                             let handler = PseudoCommandHandler()
                             await handler.rejectSuggestions()
-                            if let app = ActiveApplicationMonitor.shared.previousApp,
-                               app.isXcode
-                            {
-                                try await Task.sleep(nanoseconds: 200_000_000)
-                                app.activate()
-                            }
+                            NSWorkspace.activatePreviousActiveXcode()
                         }
                     },
                     onAcceptSuggestionTapped: {
                         Task {
                             let handler = PseudoCommandHandler()
                             await handler.acceptSuggestion()
-                            if let app = ActiveApplicationMonitor.shared.previousApp,
-                               app.isXcode
-                            {
-                                try await Task.sleep(nanoseconds: 200_000_000)
-                                app.activate()
-                            }
+                            NSWorkspace.activatePreviousActiveXcode()
                         }
                     }
                 )

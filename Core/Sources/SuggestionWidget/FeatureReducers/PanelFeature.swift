@@ -23,7 +23,7 @@ public struct PanelFeature: ReducerProtocol {
 
     public enum Action: Equatable {
         case presentSuggestion
-        case presentSuggestionProvider(SuggestionProvider, displayContent: Bool)
+        case presentSuggestionProvider(CodeSuggestionProvider, displayContent: Bool)
         case presentError(String)
         case presentPromptToCode(PromptToCodeGroup.PromptToCodeInitialState)
         case displayPanelContent
@@ -37,6 +37,7 @@ public struct PanelFeature: ReducerProtocol {
 
     @Dependency(\.suggestionWidgetControllerDependency) var suggestionWidgetControllerDependency
     @Dependency(\.xcodeInspector) var xcodeInspector
+    @Dependency(\.activateThisApp) var activateThisApp
     var windows: WidgetWindows { suggestionWidgetControllerDependency.windows }
 
     public var body: some ReducerProtocol<State, Action> {
@@ -110,7 +111,6 @@ public struct PanelFeature: ReducerProtocol {
 
             case .removeDisplayedContent:
                 state.content.error = nil
-                state.content.promptToCodeGroup.activePromptToCode = nil
                 state.content.suggestion = nil
                 return .none
 
@@ -121,9 +121,7 @@ public struct PanelFeature: ReducerProtocol {
                     await send(.displayPanelContent)
 
                     if hasPromptToCode {
-                        // looks like we need a delay.
-                        try await Task.sleep(nanoseconds: 150_000_000)
-                        await NSApplication.shared.activate(ignoringOtherApps: true)
+                        activateThisApp()
                         await windows.sharedPanelWindow.makeKey()
                     }
                 }.animation(.easeInOut(duration: 0.2))
@@ -137,7 +135,7 @@ public struct PanelFeature: ReducerProtocol {
         }
     }
 
-    func fetchSuggestionProvider(fileURL: URL) async -> SuggestionProvider? {
+    func fetchSuggestionProvider(fileURL: URL) async -> CodeSuggestionProvider? {
         guard let provider = await suggestionWidgetControllerDependency
             .suggestionWidgetDataSource?
             .suggestionForFile(at: fileURL) else { return nil }

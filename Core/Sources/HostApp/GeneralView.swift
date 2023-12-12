@@ -1,7 +1,9 @@
 import Client
 import ComposableArchitecture
+import KeyboardShortcuts
 import LaunchAgentManager
 import Preferences
+import SharedUIComponents
 import SwiftUI
 
 struct GeneralView: View {
@@ -11,11 +13,11 @@ struct GeneralView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 AppInfoView()
-                Divider()
+                SettingsDivider()
                 ExtensionServiceView(store: store)
-                Divider()
+                SettingsDivider()
                 LaunchAgentView()
-                Divider()
+                SettingsDivider()
                 GeneralSettingsView()
             }
         }
@@ -224,6 +226,8 @@ struct GeneralSettingsView: View {
         var preferWidgetToStayInsideEditorWhenWidthGreaterThan
         @AppStorage(\.hideCircularWidget)
         var hideCircularWidget
+        @AppStorage(\.showHideWidgetShortcutGlobally)
+        var showHideWidgetShortcutGlobally
     }
 
     @StateObject var settings = Settings()
@@ -285,6 +289,15 @@ struct GeneralSettingsView: View {
 
                 Text("pt")
             }
+//
+//            KeyboardShortcuts.Recorder("Hotkey to Toggle Widgets", name: .showHideWidget) { _ in
+//                // It's not used in this app!
+//                KeyboardShortcuts.disable(.showHideWidget)
+//            }
+//
+//            Toggle(isOn: $settings.showHideWidgetShortcutGlobally) {
+//                Text("Enable the Hotkey Globally")
+//            }
 
             Toggle(isOn: $settings.hideCircularWidget) {
                 Text("Hide circular widget")
@@ -342,7 +355,7 @@ struct LargeIconPicker<
             }
         }
     }
-    
+
     var body: some View {
         if #available(macOS 13.0, *) {
             LabeledContent {

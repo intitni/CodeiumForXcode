@@ -43,6 +43,10 @@ public struct PromptToCode: ReducerProtocol {
                 }
             }
         }
+        
+        public enum FocusField: Equatable {
+            case textField
+        }
 
         public var id: URL { documentURL }
         public var history: HistoryNode
@@ -57,12 +61,14 @@ public struct PromptToCode: ReducerProtocol {
         public var projectRootURL: URL
         public var documentURL: URL
         public var allCode: String
+        public var allLines: [String]
         public var extraSystemPrompt: String?
         public var generateDescriptionRequirement: Bool?
         public var commandName: String?
         @BindingState public var prompt: String
         @BindingState public var isContinuous: Bool
         @BindingState public var isAttachedToSelectionRange: Bool
+        @BindingState public var focusedField: FocusField? = .textField
 
         public var filename: String { documentURL.lastPathComponent }
         public var canRevert: Bool { history != .empty }
@@ -76,6 +82,7 @@ public struct PromptToCode: ReducerProtocol {
             projectRootURL: URL,
             documentURL: URL,
             allCode: String,
+            allLines: [String],
             commandName: String? = nil,
             description: String = "",
             isResponding: Bool = false,
@@ -101,6 +108,7 @@ public struct PromptToCode: ReducerProtocol {
             self.projectRootURL = projectRootURL
             self.documentURL = documentURL
             self.allCode = allCode
+            self.allLines = allLines
             self.extraSystemPrompt = extraSystemPrompt
             self.generateDescriptionRequirement = generateDescriptionRequirement
             self.isAttachedToSelectionRange = isAttachedToSelectionRange
@@ -114,6 +122,7 @@ public struct PromptToCode: ReducerProtocol {
 
     public enum Action: Equatable, BindableAction {
         case binding(BindingAction<State>)
+        case focusOnTextField
         case selectionRangeToggleTapped
         case modifyCodeButtonTapped
         case revertButtonTapped
@@ -142,6 +151,10 @@ public struct PromptToCode: ReducerProtocol {
             switch action {
             case .binding:
                 return .none
+                
+            case .focusOnTextField:
+                state.focusedField = .textField
+                return .none
 
             case .selectionRangeToggleTapped:
                 state.isAttachedToSelectionRange.toggle()
@@ -165,7 +178,8 @@ public struct PromptToCode: ReducerProtocol {
                                 language: copiedState.language,
                                 documentURL: copiedState.documentURL,
                                 projectRootURL: copiedState.projectRootURL,
-                                allCode: copiedState.allCode,
+                                content: copiedState.allCode,
+                                lines: copiedState.allLines,
                                 range: copiedState.selectionRange ?? .outOfScope
                             ),
                             isDetached: !copiedState.isAttachedToSelectionRange,
@@ -205,7 +219,7 @@ public struct PromptToCode: ReducerProtocol {
             case .stopRespondingButtonTapped:
                 state.isResponding = false
                 promptToCodeService.stopResponding()
-                return .none
+                return .cancel(id: CancellationKey.modifyCode(state.id))
 
             case let .modifyCodeTrunkReceived(code, description):
                 state.code = code

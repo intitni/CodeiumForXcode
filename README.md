@@ -85,8 +85,6 @@ A [recommended setup](https://github.com/intitni/CopilotForXcode/issues/14) that
 | Reject Suggestion   | `⌥{`                                                   |
 | Next Suggestion     | `⌥>`                                                   |
 | Previous Suggestion | `⌥<`                                                   |
-| Open Chat           | `⌥"`                                                   |
-| Explain Selection   | `⌥\|`                                                  |
 
 Essentially using `⌥⇧` as the "access" key combination for all bindings.
 

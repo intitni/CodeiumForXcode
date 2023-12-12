@@ -27,7 +27,7 @@ public struct ChatPanelFeature: ReducerProtocol {
         public var tabInfo: IdentifiedArray<String, ChatTabInfo>
         public var tabCollection: [ChatTabBuilderCollection]
         public var selectedTabId: String?
-        
+
         public var selectedTabInfo: ChatTabInfo? {
             guard let id = selectedTabId else { return tabInfo.first }
             return tabInfo[id: id]
@@ -47,7 +47,7 @@ public struct ChatPanelFeature: ReducerProtocol {
     public struct State: Equatable {
         public var chatTabGroup = ChatTabGroup()
         var colorScheme: ColorScheme = .light
-        var isPanelDisplayed = false
+        public internal(set) var isPanelDisplayed = false
         var chatPanelInASeparateWindow = false
     }
 
@@ -69,14 +69,16 @@ public struct ChatPanelFeature: ReducerProtocol {
         case appendAndSelectTab(ChatTabInfo)
         case switchToNextTab
         case switchToPreviousTab
-        
+        case moveChatTab(from: Int, to: Int)
+        case focusActiveChatTab
+
         case chatTab(id: String, action: ChatTabItem.Action)
     }
 
     @Dependency(\.suggestionWidgetControllerDependency) var suggestionWidgetControllerDependency
     @Dependency(\.xcodeInspector) var xcodeInspector
-    @Dependency(\.activatePreviouslyActiveXcode) var activatePreviouslyActiveXcode
-    @Dependency(\.activateExtensionService) var activateExtensionService
+    @Dependency(\.activatePreviousActiveXcode) var activatePreviouslyActiveXcode
+    @Dependency(\.activateThisApp) var activateExtensionService
     @Dependency(\.chatTabBuilderCollection) var chatTabBuilderCollection
 
     public var body: some ReducerProtocol<State, Action> {
@@ -86,7 +88,7 @@ public struct ChatPanelFeature: ReducerProtocol {
                 state.isPanelDisplayed = false
 
                 return .run { _ in
-                    await activatePreviouslyActiveXcode()
+                    activatePreviouslyActiveXcode()
                 }
 
             case .closeActiveTabClicked:
@@ -116,8 +118,9 @@ public struct ChatPanelFeature: ReducerProtocol {
                     state.chatPanelInASeparateWindow = true
                 }
                 state.isPanelDisplayed = true
-                return .run { _ in
-                    await activateExtensionService()
+                return .run { send in
+                    activateExtensionService()
+                    await send(.focusActiveChatTab)
                 }
 
             case let .updateChatTabInfo(chatTabInfo):
@@ -171,14 +174,18 @@ public struct ChatPanelFeature: ReducerProtocol {
                     return .none
                 }
                 state.chatTabGroup.selectedTabId = id
-                return .none
+                return .run { send in
+                    await send(.focusActiveChatTab)
+                }
 
             case let .appendAndSelectTab(tab):
                 guard !state.chatTabGroup.tabInfo.contains(where: { $0.id == tab.id })
                 else { return .none }
                 state.chatTabGroup.tabInfo.append(tab)
                 state.chatTabGroup.selectedTabId = tab.id
-                return .none
+                return .run { send in
+                    await send(.focusActiveChatTab)
+                }
 
             case .switchToNextTab:
                 let selectedId = state.chatTabGroup.selectedTabId
@@ -191,7 +198,9 @@ public struct ChatPanelFeature: ReducerProtocol {
                 }
                 let targetId = state.chatTabGroup.tabInfo[nextIndex].id
                 state.chatTabGroup.selectedTabId = targetId
-                return .none
+                return .run { send in
+                    await send(.focusActiveChatTab)
+                }
 
             case .switchToPreviousTab:
                 let selectedId = state.chatTabGroup.selectedTabId
@@ -204,7 +213,32 @@ public struct ChatPanelFeature: ReducerProtocol {
                 }
                 let targetId = state.chatTabGroup.tabInfo[previousIndex].id
                 state.chatTabGroup.selectedTabId = targetId
+                return .run { send in
+                    await send(.focusActiveChatTab)
+                }
+
+            case let .moveChatTab(from, to):
+                guard from >= 0, from < state.chatTabGroup.tabInfo.endIndex, to >= 0,
+                      to <= state.chatTabGroup.tabInfo.endIndex
+                else {
+                    return .none
+                }
+                let tab = state.chatTabGroup.tabInfo[from]
+                state.chatTabGroup.tabInfo.remove(at: from)
+                state.chatTabGroup.tabInfo.insert(tab, at: to)
                 return .none
+                
+            case .focusActiveChatTab:
+                let id = state.chatTabGroup.selectedTabInfo?.id
+                guard let id else { return .none }
+                return .run { send in
+                    await send(.chatTab(id: id, action: .focus))
+                }
+
+            case let .chatTab(id, .close):
+                return .run { send in
+                    await send(.closeTabButtonClicked(id: id))
+                }
                 
             case .chatTab:
                 return .none

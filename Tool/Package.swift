@@ -7,6 +7,7 @@ let package = Package(
     name: "Tool",
     platforms: [.macOS(.v12)],
     products: [
+        .library(name: "XPCShared", targets: ["XPCShared"]),
         .library(name: "Terminal", targets: ["Terminal"]),
         .library(name: "LangChain", targets: ["LangChain"]),
         .library(name: "ExternalServices", targets: ["BingSearchService"]),
@@ -14,7 +15,10 @@ let package = Package(
         .library(name: "Logger", targets: ["Logger"]),
         .library(name: "OpenAIService", targets: ["OpenAIService"]),
         .library(name: "ChatTab", targets: ["ChatTab"]),
-        .library(name: "ChatContextCollector", targets: ["ChatContextCollector"]),
+        .library(
+            name: "ChatContextCollector",
+            targets: ["ChatContextCollector", "ActiveDocumentChatContextCollector"]
+        ),
         .library(name: "Environment", targets: ["Environment"]),
         .library(name: "SuggestionModel", targets: ["SuggestionModel"]),
         .library(name: "ASTParser", targets: ["ASTParser"]),
@@ -23,7 +27,11 @@ let package = Package(
         .library(name: "Keychain", targets: ["Keychain"]),
         .library(name: "SharedUIComponents", targets: ["SharedUIComponents"]),
         .library(name: "UserDefaultsObserver", targets: ["UserDefaultsObserver"]),
-        .library(name: "Workspace", targets: ["Workspace"]),
+        .library(name: "Workspace", targets: ["Workspace", "WorkspaceSuggestionService"]),
+        .library(
+            name: "SuggestionService",
+            targets: ["SuggestionService", "GitHubCopilotService", "CodeiumService"]
+        ),
         .library(
             name: "AppMonitoring",
             targets: [
@@ -31,13 +39,17 @@ let package = Package(
                 "ActiveApplicationMonitor",
                 "AXExtension",
                 "AXNotificationStream",
+                "AppActivator",
             ]
         ),
+        .library(name: "GitIgnoreCheck", targets: ["GitIgnoreCheck"]),
     ],
     dependencies: [
         // A fork of https://github.com/aespinilla/Tiktoken to allow loading from local files.
         .package(url: "https://github.com/intitni/Tiktoken", branch: "main"),
+        // TODO: Update LanguageClient some day.
         .package(url: "https://github.com/ChimeHQ/LanguageClient", exact: "0.3.1"),
+        .package(url: "https://github.com/ChimeHQ/LanguageServerProtocol", exact: "0.8.0"),
         .package(url: "https://github.com/apple/swift-async-algorithms", from: "0.1.0"),
         .package(url: "https://github.com/pointfreeco/swift-parsing", from: "0.12.1"),
         .package(url: "https://github.com/ChimeHQ/JSONRPC", exact: "0.6.0"),
@@ -50,17 +62,16 @@ let package = Package(
         ),
         .package(url: "https://github.com/apple/swift-syntax.git", branch: "main"),
         .package(url: "https://github.com/GottaGetSwifty/CodableWrappers", from: "2.0.7"),
+        .package(url: "https://github.com/krzyzanowskim/STTextView", from: "0.8.21"),
 
         // TreeSitter
-        .package(url: "https://github.com/ChimeHQ/SwiftTreeSitter", from: "0.7.1"),
-        .package(
-            url: "https://github.com/alex-pinkus/tree-sitter-swift",
-            branch: "with-generated-files"
-        ),
+        .package(url: "https://github.com/intitni/SwiftTreeSitter.git", branch: "main"),
         .package(url: "https://github.com/lukepistrol/tree-sitter-objc", branch: "feature/spm"),
     ],
     targets: [
         // MARK: - Helpers
+
+        .target(name: "XPCShared", dependencies: ["SuggestionModel"]),
 
         .target(name: "Configs"),
 
@@ -94,8 +105,17 @@ let package = Package(
             name: "Environment",
             dependencies: [
                 "ActiveApplicationMonitor",
+                "XcodeInspector",
                 "AXExtension",
                 "Preferences",
+            ]
+        ),
+
+        .target(
+            name: "AppActivator",
+            dependencies: [
+                "XcodeInspector",
+                .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
             ]
         ),
 
@@ -154,7 +174,6 @@ let package = Package(
             dependencies: [
                 "AXExtension",
                 "SuggestionModel",
-                "Environment",
                 "AXNotificationStream",
                 "Logger",
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
@@ -168,6 +187,7 @@ let package = Package(
             dependencies: [
                 "Highlightr",
                 "Preferences",
+                .product(name: "STTextView", package: "STTextView"),
             ]
         ),
         .testTarget(name: "SharedUIComponentsTests", dependencies: ["SharedUIComponents"]),
@@ -176,7 +196,6 @@ let package = Package(
             "SuggestionModel",
             .product(name: "SwiftTreeSitter", package: "SwiftTreeSitter"),
             .product(name: "TreeSitterObjC", package: "tree-sitter-objc"),
-            .product(name: "TreeSitterSwift", package: "tree-sitter-swift"),
         ]),
 
         .testTarget(name: "ASTParserTests", dependencies: ["ASTParser"]),
@@ -184,12 +203,22 @@ let package = Package(
         .target(
             name: "Workspace",
             dependencies: [
+                "GitIgnoreCheck",
                 "UserDefaultsObserver",
                 "SuggestionModel",
                 "Environment",
                 "Logger",
                 "Preferences",
-                "XcodeInspector"
+                "XcodeInspector",
+            ]
+        ),
+
+        .target(
+            name: "WorkspaceSuggestionService",
+            dependencies: [
+                "Workspace",
+                "SuggestionService",
+                "XPCShared",
             ]
         ),
 
@@ -198,8 +227,25 @@ let package = Package(
             dependencies: [
                 "Preferences",
                 "ASTParser",
+                "SuggestionModel",
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
                 .product(name: "SwiftParser", package: "swift-syntax"),
+            ]
+        ),
+        .testTarget(
+            name: "FocusedCodeFinderTests",
+            dependencies: ["FocusedCodeFinder"]
+        ),
+
+        .target(
+            name: "GitIgnoreCheck",
+            dependencies: [
+                "Terminal",
+                "Preferences",
+                .product(
+                    name: "ComposableArchitecture",
+                    package: "swift-composable-architecture"
+                ),
             ]
         ),
 
@@ -216,15 +262,45 @@ let package = Package(
             ]
         ),
 
+        .target(name: "BingSearchService"),
+
+        .target(name: "SuggestionService", dependencies: [
+            "GitHubCopilotService",
+            "CodeiumService",
+            "UserDefaultsObserver",
+        ]),
+
+        // MARK: - GitHub Copilot
+
         .target(
-            name: "ChatContextCollector",
+            name: "GitHubCopilotService",
             dependencies: [
+                "LanguageClient",
                 "SuggestionModel",
-                "OpenAIService",
+                "Logger",
+                "Preferences",
+                "Terminal",
+                .product(name: "LanguageServerProtocol", package: "LanguageServerProtocol"),
             ]
         ),
+        .testTarget(
+            name: "GitHubCopilotServiceTests",
+            dependencies: ["GitHubCopilotService"]
+        ),
 
-        .target(name: "BingSearchService"),
+        // MARK: - Codeium
+
+        .target(
+            name: "CodeiumService",
+            dependencies: [
+                "LanguageClient",
+                "Keychain",
+                "SuggestionModel",
+                "Preferences",
+                "Terminal",
+                "XcodeInspector",
+            ]
+        ),
 
         // MARK: - OpenAI
 
@@ -237,11 +313,21 @@ let package = Package(
                 "Keychain",
                 .product(name: "JSONRPC", package: "JSONRPC"),
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+                .product(
+                    name: "ComposableArchitecture",
+                    package: "swift-composable-architecture"
+                ),
             ]
         ),
         .testTarget(
             name: "OpenAIServiceTests",
-            dependencies: ["OpenAIService"]
+            dependencies: [
+                "OpenAIService",
+                .product(
+                    name: "ComposableArchitecture",
+                    package: "swift-composable-architecture"
+                ),
+            ]
         ),
 
         // MARK: - UI
@@ -252,6 +338,34 @@ let package = Package(
                 name: "ComposableArchitecture",
                 package: "swift-composable-architecture"
             )]
+        ),
+
+        // MARK: - Chat Context Collector
+
+        .target(
+            name: "ChatContextCollector",
+            dependencies: [
+                "SuggestionModel",
+                "OpenAIService",
+            ]
+        ),
+
+        .target(
+            name: "ActiveDocumentChatContextCollector",
+            dependencies: [
+                "ChatContextCollector",
+                "OpenAIService",
+                "Preferences",
+                "FocusedCodeFinder",
+                "XcodeInspector",
+                "GitIgnoreCheck",
+            ],
+            path: "Sources/ChatContextCollectors/ActiveDocumentChatContextCollector"
+        ),
+
+        .testTarget(
+            name: "ActiveDocumentChatContextCollectorTests",
+            dependencies: ["ActiveDocumentChatContextCollector"]
         ),
 
         // MARK: - Tests

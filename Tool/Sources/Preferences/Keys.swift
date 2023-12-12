@@ -88,6 +88,11 @@ public struct UserDefaultPreferenceKeys {
         defaultValue: false,
         key: "HideCircularWidget"
     )
+
+    public let showHideWidgetShortcutGlobally = PreferenceKey(
+        defaultValue: false,
+        key: "ShowHideWidgetShortcutGlobally"
+    )
 }
 
 // MARK: - OpenAI Account Settings
@@ -173,7 +178,7 @@ public extension UserDefaultPreferenceKeys {
     }
 
     var gitHubCopilotIgnoreTrailingNewLines: PreferenceKey<Bool> {
-        .init(defaultValue: false, key: "GitHubCopilotIgnoreTrailingNewLines")
+        .init(defaultValue: true, key: "GitHubCopilotIgnoreTrailingNewLines")
     }
 }
 
@@ -264,13 +269,17 @@ public extension UserDefaultPreferenceKeys {
     var promptToCodeGenerateDescriptionInUserPreferredLanguage: PreferenceKey<Bool> {
         .init(defaultValue: true, key: "PromptToCodeGenerateDescriptionInUserPreferredLanguage")
     }
-    
+
     var promptToCodeChatModelId: PreferenceKey<String> {
         .init(defaultValue: "", key: "PromptToCodeChatModelId")
     }
-    
+
     var promptToCodeEmbeddingModelId: PreferenceKey<String> {
         .init(defaultValue: "", key: "PromptToCodeEmbeddingModelId")
+    }
+    
+    var enableSenseScopeByDefaultInPromptToCode: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "EnableSenseScopeByDefaultInPromptToCode")
     }
 }
 
@@ -318,7 +327,11 @@ public extension UserDefaultPreferenceKeys {
     }
 
     var acceptSuggestionWithTab: PreferenceKey<Bool> {
-        .init(defaultValue: false, key: "AcceptSuggestionWithTab")
+        .init(defaultValue: true, key: "AcceptSuggestionWithTab")
+    }
+    
+    var isSuggestionSenseEnabled: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "IsSuggestionSenseEnabled")
     }
 }
 
@@ -361,7 +374,7 @@ public extension UserDefaultPreferenceKeys {
         .init(defaultValue: 100, key: "MaxEmbeddableFileInChatContextLineCount")
     }
 
-    var useCodeScopeByDefaultInChatContext: PreferenceKey<Bool> {
+    var useCodeScopeByDefaultInChatContext: DeprecatedPreferenceKey<Bool> {
         .init(defaultValue: true, key: "UseSelectionScopeByDefaultInChatContext")
     }
 
@@ -370,9 +383,7 @@ public extension UserDefaultPreferenceKeys {
             defaultValue: """
             You are an AI programming assistant.
             Your reply should be concise, clear, informative and logical.
-            You MUST reply in the format of markdown.
-            You MUST embed every code you provide in a markdown code block.
-            You MUST add the programming language name at the start of the markdown code block.
+            Your reply should be formatted in Markdown.
             If you are asked to help perform a task, you MUST think step-by-step, then describe each step concisely.
             If you are asked to explain code, you MUST explain it step-by-step in a ordered list concisely.
             Make your answer short and structured.
@@ -383,6 +394,42 @@ public extension UserDefaultPreferenceKeys {
 
     var chatSearchPluginMaxIterations: PreferenceKey<Int> {
         .init(defaultValue: 3, key: "ChatSearchPluginMaxIterations")
+    }
+
+    var wrapCodeInChatCodeBlock: PreferenceKey<Bool> {
+        .init(defaultValue: true, key: "WrapCodeInChatCodeBlock")
+    }
+
+    var enableFileScopeByDefaultInChatContext: PreferenceKey<Bool> {
+        .init(defaultValue: true, key: "EnableFileScopeByDefaultInChatContext")
+    }
+
+    var enableCodeScopeByDefaultInChatContext: PreferenceKey<Bool> {
+        .init(defaultValue: true, key: "UseSelectionScopeByDefaultInChatContext")
+    }
+
+    var enableSenseScopeByDefaultInChatContext: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "EnableSenseScopeByDefaultInChatContext")
+    }
+
+    var enableProjectScopeByDefaultInChatContext: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "EnableProjectScopeByDefaultInChatContext")
+    }
+
+    var enableWebScopeByDefaultInChatContext: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "EnableWebScopeByDefaultInChatContext")
+    }
+    
+    var preferredChatModelIdForSenseScope: PreferenceKey<String> {
+        .init(defaultValue: "", key: "PreferredChatModelIdForSenseScope")
+    }
+    
+    var preferredChatModelIdForProjectScope: PreferenceKey<String> {
+        .init(defaultValue: "", key: "PreferredChatModelIdForProjectScope")
+    }
+    
+    var preferredChatModelIdForWebScope: PreferenceKey<String> {
+        .init(defaultValue: "", key: "PreferredChatModelIdForWebScope")
     }
 }
 
@@ -500,6 +547,14 @@ public extension UserDefaultPreferenceKeys {
         )
     }
     
+    var disableGitIgnoreCheck: FeatureFlag {
+        .init(defaultValue: false, key: "FeatureFlag-DisableGitIgnoreCheck")
+    }
+    
+    var disableFileContentManipulationByCheatsheet: FeatureFlag {
+        .init(defaultValue: true, key: "FeatureFlag-DisableFileContentManipulationByCheatsheet")
+    }
+
     var disableEnhancedWorkspace: FeatureFlag {
         .init(
             defaultValue: false,
