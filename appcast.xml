@@ -2,89 +2,16 @@
 <rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <title>Codeium for Xcode</title>
-
     <item>
       <title>0.28.3</title>
-      <pubDate>Tue, 12 Dec 2023 14:29:58 +0800</pubDate>
+      <pubDate>Tue, 12 Dec 2023 15:55:44 +0800</pubDate>
       <sparkle:version>293</sparkle:version>
       <sparkle:shortVersionString>0.28.3</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>12.0</sparkle:minimumSystemVersion>
       <sparkle:releaseNotesLink>
-        https://github.com/intitni/CopilotForXcode/releases/tag/0.28.3
+        https://github.com/intitni/CodeiumForXcode/releases/tag/codeium%2F0.28.3
       </sparkle:releaseNotesLink>
-      <enclosure url="https://github.com/intitni/CopilotForXcode/releases/download/0.28.3/Copilot.for.Xcode.app.zip" length="36973011" type="application/octet-stream" sparkle:edSignature="fEi1llRa9nUVemxGr4mQtTLOkP4lTYqOm0j6qGMhoVtv1ySiklTdqit7PVW6tdQZc1iSpC7DZEFsxKq5+D4ZDA=="/>
-    </item>
-
-    <item>
-      <title>0.28.2</title>
-      <pubDate>Mon, 04 Dec 2023 23:11:26 +0800</pubDate>
-      <sparkle:version>292</sparkle:version>
-      <sparkle:shortVersionString>0.28.2</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>12.0</sparkle:minimumSystemVersion>
-      <sparkle:releaseNotesLink>
-        https://github.com/intitni/CopilotForXcode/releases/tag/0.28.2
-      </sparkle:releaseNotesLink>
-      <enclosure url="https://github.com/intitni/CopilotForXcode/releases/download/0.28.2/Copilot.for.Xcode.app.zip" length="36956678" type="application/octet-stream" sparkle:edSignature="kiWm6C0aaxs9cvlSgmH3Y5iVIP5R9hbdgZGXC6qQw8mDG2E8Vc9Rq7ZY8Jz09NDL3GrDXZT3BwoY58Jdev5TAg=="/>
-    </item>
-
-    <item>
-      <title>0.28.0</title>
-      <pubDate>Mon, 04 Dec 2023 16:04:23 +0800</pubDate>
-      <sparkle:version>290</sparkle:version>
-      <sparkle:shortVersionString>0.28.0</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>12.0</sparkle:minimumSystemVersion>
-      <sparkle:releaseNotesLink>
-        https://github.com/intitni/CopilotForXcode/releases/tag/0.28.0
-      </sparkle:releaseNotesLink>
-      <enclosure url="https://github.com/intitni/CopilotForXcode/releases/download/0.28.0/Copilot.for.Xcode.app.zip" length="36956518" type="application/octet-stream" sparkle:edSignature="YC5/0zEGAC+COmqpc2FIXt41wkMHRXtoH6NIKfbsu86F7HhwuOEQhieEoxU/MnoASOShuDIUVKWGJqv51azYAw=="/>
-    </item>
-
-    <item>
-      <title>0.27.1</title>
-      <pubDate>Sat, 18 Nov 2023 12:46:36 +0800</pubDate>
-      <sparkle:version>281</sparkle:version>
-      <sparkle:shortVersionString>0.27.1</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>12.0</sparkle:minimumSystemVersion>
-      <sparkle:releaseNotesLink>
-        https://github.com/intitni/CopilotForXcode/releases/tag/0.27.1
-      </sparkle:releaseNotesLink>
-      <enclosure url="https://github.com/intitni/CopilotForXcode/releases/download/0.27.1/Copilot.for.Xcode.app.zip" length="36549722" type="application/octet-stream" sparkle:edSignature="0Pkc8BsPtwyE7TTVfTx25skrFXFl1sbRhTmWdgcET0Z6qWyP2wfEj88MIN13wpPoJ8n232eRsUll2z+2K/ZJAg=="/>
-    </item>
-
-    <item>
-      <title>0.27.0</title>
-      <pubDate>Fri, 10 Nov 2023 02:34:25 +0800</pubDate>
-      <sparkle:version>280</sparkle:version>
-      <sparkle:shortVersionString>0.27.0</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>12.0</sparkle:minimumSystemVersion>
-      <sparkle:releaseNotesLink>
-        https://github.com/intitni/CopilotForXcode/releases/tag/0.27.0
-      </sparkle:releaseNotesLink>
-      <enclosure url="https://github.com/intitni/CopilotForXcode/releases/download/0.27.0/Copilot.for.Xcode.app.zip" length="36494349" type="application/octet-stream" sparkle:edSignature="vAXfqq8ElSr4/0QnVx3J4ooUKTF6XkIUNIAGhwPFFgExXbZa5OcEJayYt3J3Mri22aHiSU8OpDY/xisdUEzhBQ=="/>
-    </item>
-
-    <item>
-      <title>0.26.0</title>
-      <pubDate>Sun, 22 Oct 2023 18:58:49 +0800</pubDate>
-      <sparkle:version>272</sparkle:version>
-      <sparkle:shortVersionString>0.26.0</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>12.0</sparkle:minimumSystemVersion>
-      <sparkle:releaseNotesLink>
-        https://github.com/intitni/CopilotForXcode/releases/tag/0.26.0
-      </sparkle:releaseNotesLink>
-      <enclosure url="https://github.com/intitni/CopilotForXcode/releases/download/0.26.0/Copilot.for.Xcode.app.zip" length="36274215" type="application/octet-stream" sparkle:edSignature="CB6JDXYugsFfJfokP2yuIrnbse9g+TwUW9rZ6zti+SBSt57YFF7xIKh5KAOdTIUnhqZrm3OffexcsDZqeV+wCQ=="/>
-    </item>
-
-    <item>
-      <title>0.25.0</title>
-      <pubDate>Wed, 11 Oct 2023 23:08:08 +0800</pubDate>
-      <sparkle:version>261</sparkle:version>
-      <sparkle:shortVersionString>0.25.0</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>12.0</sparkle:minimumSystemVersion>
-      <sparkle:releaseNotesLink>
-        https://github.com/intitni/CopilotForXcode/releases/tag/0.25.0
-      </sparkle:releaseNotesLink>
-      <enclosure url="https://github.com/intitni/CopilotForXcode/releases/download/0.25.0/Copilot.for.Xcode.app.zip" length="35224211" type="application/octet-stream" sparkle:edSignature="0Yug7VJ31/I4rZe8BO5OC8GvjzzeqZ8GiEnQal3m0dJJT9WudApOv/182hI3REw6beIYTryftu1dGTGWo0nICA=="/>
+      <enclosure url="https://github.com/intitni/CodeiumForXcode/releases/download/codeium%2F0.28.3/Codeium.for.Xcode.app.zip" length="30285250" type="application/octet-stream" sparkle:edSignature="D7pYrK9dOX7nziFnT/E9pQXYy/8b8/eX3E+ZHvd8unscmRdP7V54KXuVoyOxaH1wH7BuFPjhwR/z/H735Wl/Dg=="/>
     </item>
 
     <item>
