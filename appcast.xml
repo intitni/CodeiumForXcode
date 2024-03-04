@@ -4,6 +4,18 @@
     <title>Codeium for Xcode</title>
 
     <item>
+      <title>0.30.5</title>
+      <pubDate>Mon, 04 Mar 2024 22:26:51 +0800</pubDate>
+      <sparkle:version>328</sparkle:version>
+      <sparkle:shortVersionString>0.30.5</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>12.0</sparkle:minimumSystemVersion>
+      <sparkle:releaseNotesLink>
+        https://github.com/intitni/CodeiumForXcode/releases/tag/codeium%2F0.30.5
+      </sparkle:releaseNotesLink>
+      <enclosure url="https://github.com/intitni/CodeiumForXcode/releases/download/codeium%2F0.30.5/Codeium.for.Xcode.app.zip" length="32788046" type="application/octet-stream" sparkle:edSignature="AZN6vMQmADVuqdcJGHXY/lya7WG05nBrc5qieWeL3zdB/Ur5H5MS+fB7cpVu7QaDrM1A11/P4r0sbKnkyZhsBg=="/>
+    </item>
+
+    <item>
       <title>0.28.3</title>
       <pubDate>Tue, 12 Dec 2023 15:55:44 +0800</pubDate>
       <sparkle:version>293</sparkle:version>
