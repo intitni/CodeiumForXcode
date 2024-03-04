@@ -38,7 +38,7 @@ public struct PanelFeature: ReducerProtocol {
     @Dependency(\.suggestionWidgetControllerDependency) var suggestionWidgetControllerDependency
     @Dependency(\.xcodeInspector) var xcodeInspector
     @Dependency(\.activateThisApp) var activateThisApp
-    var windows: WidgetWindows { suggestionWidgetControllerDependency.windows }
+    var windows: WidgetWindows? { suggestionWidgetControllerDependency.windowsController?.windows }
 
     public var body: some ReducerProtocol<State, Action> {
         Scope(state: \.suggestionPanelState, action: /Action.suggestionPanel) {
@@ -53,7 +53,7 @@ public struct PanelFeature: ReducerProtocol {
             switch action {
             case .presentSuggestion:
                 return .run { send in
-                    guard let fileURL = xcodeInspector.activeDocumentURL,
+                    guard let fileURL = await xcodeInspector.safe.activeDocumentURL,
                           let provider = await fetchSuggestionProvider(fileURL: fileURL)
                     else { return }
                     await send(.presentSuggestionProvider(provider, displayContent: true))
@@ -96,11 +96,10 @@ public struct PanelFeature: ReducerProtocol {
 
             case .switchToAnotherEditorAndUpdateContent:
                 state.content.error = nil
+                state.content.suggestion = nil
                 return .run { send in
-                    guard let fileURL = xcodeInspector.realtimeActiveDocumentURL else { return }
-                    if let suggestion = await fetchSuggestionProvider(fileURL: fileURL) {
-                        await send(.presentSuggestionProvider(suggestion, displayContent: false))
-                    }
+                    guard let fileURL = await xcodeInspector.safe.realtimeActiveDocumentURL
+                    else { return }
 
                     await send(.sharedPanel(
                         .promptToCodeGroup(
@@ -122,7 +121,9 @@ public struct PanelFeature: ReducerProtocol {
 
                     if hasPromptToCode {
                         activateThisApp()
-                        await windows.sharedPanelWindow.makeKey()
+                        await MainActor.run {
+                            windows?.sharedPanelWindow.makeKey()
+                        }
                     }
                 }.animation(.easeInOut(duration: 0.2))
 

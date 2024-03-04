@@ -1,22 +1,22 @@
 import Foundation
 
+private var teamIDPrefix: String {
+    Bundle.main.infoDictionary?["TEAM_ID_PREFIX"] as? String ?? ""
+}
+
+private var bundleIdentifierBase: String {
+    Bundle.main.infoDictionary?["BUNDLE_IDENTIFIER_BASE"] as? String ?? ""
+}
+
 public var userDefaultSuiteName: String {
-    "5YKZ4Y3DAW.group.com.intii.CodeiumForXcode"
+    "\(teamIDPrefix)group.\(bundleIdentifierBase)"
 }
 
 public var keychainAccessGroup: String {
-    #if DEBUG
-    return "5YKZ4Y3DAW.dev.com.intii.CodeiumForXcode.Shared"
-    #else
-    return "5YKZ4Y3DAW.com.intii.CodeiumForXcode.Shared"
-    #endif
+    return "\(teamIDPrefix)\(bundleIdentifierBase).Shared"
 }
 
 public var keychainService: String {
-    #if DEBUG
-    return "dev.com.intii.CodeiumForXcode"
-    #else
-    return "com.intii.CodeiumForXcode"
-    #endif
+    return bundleIdentifierBase
 }
 

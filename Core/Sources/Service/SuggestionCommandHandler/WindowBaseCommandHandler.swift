@@ -1,6 +1,5 @@
 import AppKit
 import ChatService
-import Environment
 import Foundation
 import GitHubCopilotService
 import LanguageServerProtocol
@@ -12,6 +11,7 @@ import SuggestionWidget
 import UserNotifications
 import Workspace
 import WorkspaceSuggestionService
+import XcodeInspector
 import XPCShared
 
 struct WindowBaseCommandHandler: SuggestionCommandHandler {
@@ -39,7 +39,8 @@ struct WindowBaseCommandHandler: SuggestionCommandHandler {
         defer {
             presenter.markAsProcessing(false)
         }
-        let fileURL = try await Environment.fetchCurrentFileURL()
+        guard let fileURL = await XcodeInspector.shared.safe.realtimeActiveDocumentURL
+        else { return }
         let (workspace, filespace) = try await Service.shared.workspacePool
             .fetchOrCreateWorkspaceAndFilespace(fileURL: fileURL)
 
@@ -80,9 +81,8 @@ struct WindowBaseCommandHandler: SuggestionCommandHandler {
 
     @WorkspaceActor
     private func _presentNextSuggestion(editor: EditorContent) async throws {
-        presenter.markAsProcessing(true)
-        defer { presenter.markAsProcessing(false) }
-        let fileURL = try await Environment.fetchCurrentFileURL()
+        guard let fileURL = await XcodeInspector.shared.safe.realtimeActiveDocumentURL
+        else { return }
         let (workspace, filespace) = try await Service.shared.workspacePool
             .fetchOrCreateWorkspaceAndFilespace(fileURL: fileURL)
         workspace.selectNextSuggestion(forFileAt: fileURL)
@@ -107,9 +107,8 @@ struct WindowBaseCommandHandler: SuggestionCommandHandler {
 
     @WorkspaceActor
     private func _presentPreviousSuggestion(editor: EditorContent) async throws {
-        presenter.markAsProcessing(true)
-        defer { presenter.markAsProcessing(false) }
-        let fileURL = try await Environment.fetchCurrentFileURL()
+        guard let fileURL = await XcodeInspector.shared.safe.realtimeActiveDocumentURL
+        else { return }
         let (workspace, filespace) = try await Service.shared.workspacePool
             .fetchOrCreateWorkspaceAndFilespace(fileURL: fileURL)
         workspace.selectPreviousSuggestion(forFileAt: fileURL)
@@ -134,9 +133,8 @@ struct WindowBaseCommandHandler: SuggestionCommandHandler {
 
     @WorkspaceActor
     private func _rejectSuggestion(editor: EditorContent) async throws {
-        presenter.markAsProcessing(true)
-        defer { presenter.markAsProcessing(false) }
-        let fileURL = try await Environment.fetchCurrentFileURL()
+        guard let fileURL = await XcodeInspector.shared.safe.realtimeActiveDocumentURL
+        else { return }
 
         let (workspace, _) = try await Service.shared.workspacePool
             .fetchOrCreateWorkspaceAndFilespace(fileURL: fileURL)
@@ -146,10 +144,8 @@ struct WindowBaseCommandHandler: SuggestionCommandHandler {
 
     @WorkspaceActor
     func acceptSuggestion(editor: EditorContent) async throws -> UpdatedContent? {
-        presenter.markAsProcessing(true)
-        defer { presenter.markAsProcessing(false) }
-
-        let fileURL = try await Environment.fetchCurrentFileURL()
+        guard let fileURL = await XcodeInspector.shared.safe.realtimeActiveDocumentURL
+        else { return nil }
         let (workspace, _) = try await Service.shared.workspacePool
             .fetchOrCreateWorkspaceAndFilespace(fileURL: fileURL)
 
@@ -182,10 +178,8 @@ struct WindowBaseCommandHandler: SuggestionCommandHandler {
     }
 
     func acceptPromptToCode(editor: EditorContent) async throws -> UpdatedContent? {
-        presenter.markAsProcessing(true)
-        defer { presenter.markAsProcessing(false) }
-
-        let fileURL = try await Environment.fetchCurrentFileURL()
+        guard let fileURL = await XcodeInspector.shared.safe.realtimeActiveDocumentURL
+        else { return nil }
 
         let injector = SuggestionInjector()
         var lines = editor.lines
@@ -214,11 +208,10 @@ struct WindowBaseCommandHandler: SuggestionCommandHandler {
             }()
 
             let suggestion = CodeSuggestion(
+                id: UUID().uuidString,
                 text: promptToCode.code,
                 position: range.start,
-                uuid: UUID().uuidString,
-                range: range,
-                displayText: promptToCode.code
+                range: range
             )
 
             injector.acceptSuggestion(
@@ -261,13 +254,15 @@ struct WindowBaseCommandHandler: SuggestionCommandHandler {
 
     @WorkspaceActor
     func prepareCache(editor: EditorContent) async throws -> UpdatedContent? {
-        let fileURL = try await Environment.fetchCurrentFileURL()
+        guard let fileURL = await XcodeInspector.shared.safe.realtimeActiveDocumentURL
+        else { return nil }
         let (_, filespace) = try await Service.shared.workspacePool
             .fetchOrCreateWorkspaceAndFilespace(fileURL: fileURL)
         filespace.codeMetadata.uti = editor.uti
         filespace.codeMetadata.tabSize = editor.tabSize
         filespace.codeMetadata.indentSize = editor.indentSize
         filespace.codeMetadata.usesTabsForIndentation = editor.usesTabsForIndentation
+        filespace.codeMetadata.guessLineEnding(from: editor.lines.first)
         return nil
     }
 
@@ -363,9 +358,8 @@ extension WindowBaseCommandHandler {
         generateDescription: Bool?,
         name: String?
     ) async throws {
-        presenter.markAsProcessing(true)
-        defer { presenter.markAsProcessing(false) }
-        let fileURL = try await Environment.fetchCurrentFileURL()
+        guard let fileURL = await XcodeInspector.shared.safe.realtimeActiveDocumentURL
+        else { return }
         let (workspace, filespace) = try await Service.shared.workspacePool
             .fetchOrCreateWorkspaceAndFilespace(fileURL: fileURL)
         guard workspace.suggestionPlugin?.isSuggestionFeatureEnabled ?? false else {
@@ -412,8 +406,18 @@ extension WindowBaseCommandHandler {
         let viewStore = Service.shared.guiController.viewStore
 
         let customCommandTemplateProcessor = CustomCommandTemplateProcessor()
-        let newExtraSystemPrompt = extraSystemPrompt.map(customCommandTemplateProcessor.process)
-        let newPrompt = prompt.map(customCommandTemplateProcessor.process)
+        
+        let newExtraSystemPrompt: String? = if let extraSystemPrompt {
+            await customCommandTemplateProcessor.process(extraSystemPrompt)
+        } else {
+            nil
+        }
+        
+        let newPrompt: String? = if let prompt {
+            await customCommandTemplateProcessor.process(prompt)
+        } else {
+            nil
+        }
 
         _ = await Task { @MainActor in
             // if there is already a prompt to code presenting, we should not present another one
@@ -425,7 +429,7 @@ extension WindowBaseCommandHandler {
                 usesTabsForIndentation: filespace.codeMetadata.usesTabsForIndentation ?? false,
                 documentURL: fileURL,
                 projectRootURL: workspace.projectRootURL,
-                allCode: editor.content, 
+                allCode: editor.content,
                 allLines: editor.lines,
                 isContinuous: isContinuous,
                 commandName: name,

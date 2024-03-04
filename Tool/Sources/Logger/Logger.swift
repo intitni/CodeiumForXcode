@@ -21,6 +21,7 @@ public final class Logger {
     public static let langchain = Logger(category: "LangChain")
     public static let retrieval = Logger(category: "Retrieval")
     public static let license = Logger(category: "License")
+    public static let `extension` = Logger(category: "Extension")
     #if DEBUG
     /// Use a temp logger to log something temporary. I won't be available in release builds.
     public static let temp = Logger(category: "Temp")
@@ -32,7 +33,13 @@ public final class Logger {
         osLog = OSLog(subsystem: subsystem, category: category)
     }
 
-    func log(level: LogLevel, message: String) {
+    func log(
+        level: LogLevel,
+        message: String,
+        file: StaticString = #file,
+        line: UInt = #line,
+        function: StaticString = #function
+    ) {
         let osLogType: OSLogType
         switch level {
         case .debug:
@@ -46,23 +53,93 @@ public final class Logger {
         os_log("%{public}@", log: osLog, type: osLogType, message as CVarArg)
     }
 
-    public func debug(_ message: String) {
-        log(level: .debug, message: message)
+    public func debug(
+        _ message: String,
+        file: StaticString = #file,
+        line: UInt = #line,
+        function: StaticString = #function
+    ) {
+        log(level: .debug, message: """
+        \(message)
+        file: \(file)
+        line: \(line)
+        function: \(function)
+        """, file: file, line: line, function: function)
     }
 
-    public func info(_ message: String) {
-        log(level: .info, message: message)
+    public func info(
+        _ message: String,
+        file: StaticString = #file,
+        line: UInt = #line,
+        function: StaticString = #function
+    ) {
+        log(level: .info, message: message, file: file, line: line, function: function)
     }
 
-    public func error(_ message: String) {
-        log(level: .error, message: message)
+    public func error(
+        _ message: String,
+        file: StaticString = #file,
+        line: UInt = #line,
+        function: StaticString = #function
+    ) {
+        log(level: .error, message: message, file: file, line: line, function: function)
     }
 
-    public func error(_ error: Error) {
-        log(level: .error, message: error.localizedDescription)
+    public func error(
+        _ error: Error,
+        file: StaticString = #file,
+        line: UInt = #line,
+        function: StaticString = #function
+    ) {
+        log(
+            level: .error,
+            message: error.localizedDescription,
+            file: file,
+            line: line,
+            function: function
+        )
     }
-    
-    public func signpost(_ type: OSSignpostType, name: StaticString) {
-        os_signpost(type, log: osLog, name: name)
+
+    public func signpostBegin(
+        name: StaticString,
+        file: StaticString = #file,
+        line: UInt = #line,
+        function: StaticString = #function
+    ) -> Signposter {
+        let poster = OSSignposter(logHandle: osLog)
+        let id = poster.makeSignpostID()
+        let state = poster.beginInterval(name, id: id)
+        return .init(log: osLog, id: id, name: name, signposter: poster, beginState: state)
+    }
+
+    public struct Signposter {
+        let log: OSLog
+        let id: OSSignpostID
+        let name: StaticString
+        let signposter: OSSignposter
+        let state: OSSignpostIntervalState
+
+        init(
+            log: OSLog,
+            id: OSSignpostID,
+            name: StaticString,
+            signposter: OSSignposter,
+            beginState: OSSignpostIntervalState
+        ) {
+            self.id = id
+            self.log = log
+            self.name = name
+            self.signposter = signposter
+            state = beginState
+        }
+
+        public func end() {
+            signposter.endInterval(name, state)
+        }
+
+        public func event(_ text: String) {
+            signposter.emitEvent(name, id: id, "\(text, privacy: .public)")
+        }
     }
 }
+

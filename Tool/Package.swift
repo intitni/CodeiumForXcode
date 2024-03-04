@@ -19,7 +19,6 @@ let package = Package(
             name: "ChatContextCollector",
             targets: ["ChatContextCollector", "ActiveDocumentChatContextCollector"]
         ),
-        .library(name: "Environment", targets: ["Environment"]),
         .library(name: "SuggestionModel", targets: ["SuggestionModel"]),
         .library(name: "ASTParser", targets: ["ASTParser"]),
         .library(name: "FocusedCodeFinder", targets: ["FocusedCodeFinder"]),
@@ -29,8 +28,8 @@ let package = Package(
         .library(name: "UserDefaultsObserver", targets: ["UserDefaultsObserver"]),
         .library(name: "Workspace", targets: ["Workspace", "WorkspaceSuggestionService"]),
         .library(
-            name: "SuggestionService",
-            targets: ["SuggestionService", "GitHubCopilotService", "CodeiumService"]
+            name: "SuggestionProvider",
+            targets: ["SuggestionProvider", "GitHubCopilotService", "CodeiumService"]
         ),
         .library(
             name: "AppMonitoring",
@@ -43,6 +42,8 @@ let package = Package(
             ]
         ),
         .library(name: "GitIgnoreCheck", targets: ["GitIgnoreCheck"]),
+        .library(name: "DebounceFunction", targets: ["DebounceFunction"]),
+        .library(name: "AsyncPassthroughSubject", targets: ["AsyncPassthroughSubject"]),
     ],
     dependencies: [
         // A fork of https://github.com/aespinilla/Tiktoken to allow loading from local files.
@@ -60,9 +61,10 @@ let package = Package(
             url: "https://github.com/pointfreeco/swift-composable-architecture",
             from: "0.55.0"
         ),
-        .package(url: "https://github.com/apple/swift-syntax.git", branch: "main"),
+        .package(url: "https://github.com/apple/swift-syntax.git", exact: "509.0.2"),
         .package(url: "https://github.com/GottaGetSwifty/CodableWrappers", from: "2.0.7"),
         .package(url: "https://github.com/krzyzanowskim/STTextView", from: "0.8.21"),
+        .package(url: "https://github.com/google/generative-ai-swift", from: "0.4.4"),
 
         // TreeSitter
         .package(url: "https://github.com/intitni/SwiftTreeSitter.git", branch: "main"),
@@ -101,15 +103,7 @@ let package = Package(
             )]
         ),
 
-        .target(
-            name: "Environment",
-            dependencies: [
-                "ActiveApplicationMonitor",
-                "XcodeInspector",
-                "AXExtension",
-                "Preferences",
-            ]
-        ),
+        .target(name: "DebounceFunction"),
 
         .target(
             name: "AppActivator",
@@ -130,6 +124,7 @@ let package = Package(
             name: "TokenEncoder",
             dependencies: [
                 .product(name: "Tiktoken", package: "Tiktoken"),
+                .product(name: "GoogleGenerativeAI", package: "generative-ai-swift"),
             ],
             resources: [
                 .copy("Resources/cl100k_base.tiktoken"),
@@ -176,17 +171,25 @@ let package = Package(
                 "SuggestionModel",
                 "AXNotificationStream",
                 "Logger",
+                "Toast",
+                "Preferences",
+                "AsyncPassthroughSubject",
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
             ]
         ),
 
+        .testTarget(name: "XcodeInspectorTests", dependencies: ["XcodeInspector"]),
+
         .target(name: "UserDefaultsObserver"),
+
+        .target(name: "AsyncPassthroughSubject"),
 
         .target(
             name: "SharedUIComponents",
             dependencies: [
                 "Highlightr",
                 "Preferences",
+                "SuggestionModel",
                 .product(name: "STTextView", package: "STTextView"),
             ]
         ),
@@ -206,7 +209,6 @@ let package = Package(
                 "GitIgnoreCheck",
                 "UserDefaultsObserver",
                 "SuggestionModel",
-                "Environment",
                 "Logger",
                 "Preferences",
                 "XcodeInspector",
@@ -217,7 +219,7 @@ let package = Package(
             name: "WorkspaceSuggestionService",
             dependencies: [
                 "Workspace",
-                "SuggestionService",
+                "SuggestionProvider",
                 "XPCShared",
             ]
         ),
@@ -264,7 +266,7 @@ let package = Package(
 
         .target(name: "BingSearchService"),
 
-        .target(name: "SuggestionService", dependencies: [
+        .target(name: "SuggestionProvider", dependencies: [
             "GitHubCopilotService",
             "CodeiumService",
             "UserDefaultsObserver",
@@ -313,6 +315,7 @@ let package = Package(
                 "Keychain",
                 .product(name: "JSONRPC", package: "JSONRPC"),
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+                .product(name: "GoogleGenerativeAI", package: "generative-ai-swift"),
                 .product(
                     name: "ComposableArchitecture",
                     package: "swift-composable-architecture"

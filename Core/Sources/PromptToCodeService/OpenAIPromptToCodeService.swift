@@ -31,22 +31,23 @@ public final class OpenAIPromptToCodeService: PromptToCodeServiceType {
             return userPreferredLanguage.isEmpty ? "" : " in \(userPreferredLanguage)"
         }()
 
-        let editor: EditorInformation = XcodeInspector.shared.focusedEditorContent ?? .init(
-            editorContent: .init(
-                content: source.content,
-                lines: source.lines,
-                selections: [source.range],
-                cursorPosition: .outOfScope,
-                lineAnnotations: []
-            ),
-            selectedContent: code,
-            selectedLines: [],
-            documentURL: source.documentURL,
-            workspaceURL: source.projectRootURL,
-            projectRootURL: source.projectRootURL,
-            relativePath: "",
-            language: source.language
-        )
+        let editor: EditorInformation = await XcodeInspector.shared.getFocusedEditorContent()
+            ?? .init(
+                editorContent: .init(
+                    content: source.content,
+                    lines: source.lines,
+                    selections: [source.range],
+                    cursorPosition: .outOfScope,
+                    lineAnnotations: []
+                ),
+                selectedContent: code,
+                selectedLines: [],
+                documentURL: source.documentURL,
+                workspaceURL: source.projectRootURL,
+                projectRootURL: source.projectRootURL,
+                relativePath: "",
+                language: source.language
+            )
 
         let rule: String = {
             func generateDescription(index: Int) -> String {
@@ -222,7 +223,7 @@ extension OpenAIPromptToCodeService {
     {
         func extractCodeFromMarkdown(_ markdown: String) -> (code: String, endIndex: Int)? {
             let codeBlockRegex = try! NSRegularExpression(
-                pattern: #"```(?:\w+)?[\n]([\s\S]+?)[\n]```"#,
+                pattern: #"```(?:\w+)?\R([\s\S]+?)\R```"#,
                 options: .dotMatchesLineSeparators
             )
             let range = NSRange(markdown.startIndex..<markdown.endIndex, in: markdown)
@@ -232,7 +233,7 @@ extension OpenAIPromptToCodeService {
             }
 
             let incompleteCodeBlockRegex = try! NSRegularExpression(
-                pattern: #"```(?:\w+)?[\n]([\s\S]+?)$"#,
+                pattern: #"```(?:\w+)?\R([\s\S]+?)$"#,
                 options: .dotMatchesLineSeparators
             )
             let range2 = NSRange(markdown.startIndex..<markdown.endIndex, in: markdown)
@@ -266,7 +267,7 @@ extension OpenAIPromptToCodeService {
     }
 
     func getCommonLeadingSpaceCount(_ code: String) -> Int {
-        let lines = code.split(separator: "\n")
+        let lines = code.split(whereSeparator: \.isNewline)
         guard !lines.isEmpty else { return 0 }
         var commonCount = Int.max
         for line in lines {

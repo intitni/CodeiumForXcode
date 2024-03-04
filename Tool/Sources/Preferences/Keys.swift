@@ -93,6 +93,13 @@ public struct UserDefaultPreferenceKeys {
         defaultValue: false,
         key: "ShowHideWidgetShortcutGlobally"
     )
+    
+    // MARK: Update Channel
+    
+    public let installBetaBuilds = PreferenceKey(
+        defaultValue: false,
+        key: "InstallBetaBuilds"
+    )
 }
 
 // MARK: - OpenAI Account Settings
@@ -156,6 +163,10 @@ public extension UserDefaultPreferenceKeys {
     var gitHubCopilotProxyPort: PreferenceKey<String> {
         .init(defaultValue: "", key: "GitHubCopilotProxyPort")
     }
+    
+    var gitHubCopilotEnterpriseURI: PreferenceKey<String> {
+        .init(defaultValue: "", key: "GitHubCopilotEnterpriseURI")
+    }
 
     var gitHubCopilotUseStrictSSL: PreferenceKey<Bool> {
         .init(defaultValue: true, key: "GitHubCopilotUseStrictSSL")
@@ -214,6 +225,7 @@ public extension UserDefaultPreferenceKeys {
                 info: .init(
                     apiKeyName: "",
                     baseURL: "",
+                    isFullURL: false,
                     maxTokens: ChatGPTModel.gpt35Turbo.maxToken,
                     supportsFunctionCalling: true,
                     modelName: ChatGPTModel.gpt35Turbo.rawValue
@@ -247,6 +259,7 @@ public extension UserDefaultPreferenceKeys {
                 info: .init(
                     apiKeyName: "",
                     baseURL: "",
+                    isFullURL: false,
                     maxTokens: OpenAIEmbeddingModel.textEmbeddingAda002.maxToken,
                     modelName: OpenAIEmbeddingModel.textEmbeddingAda002.rawValue
                 )
@@ -286,8 +299,12 @@ public extension UserDefaultPreferenceKeys {
 // MARK: - Suggestion
 
 public extension UserDefaultPreferenceKeys {
-    var suggestionFeatureProvider: PreferenceKey<SuggestionFeatureProvider> {
+    var oldSuggestionFeatureProvider: DeprecatedPreferenceKey<BuiltInSuggestionFeatureProvider> {
         .init(defaultValue: .gitHubCopilot, key: "SuggestionFeatureProvider")
+    }
+    
+    var suggestionFeatureProvider: PreferenceKey<SuggestionFeatureProvider> {
+        .init(defaultValue: .builtIn(.gitHubCopilot), key: "NewSuggestionFeatureProvider")
     }
 
     var realtimeSuggestionToggle: PreferenceKey<Bool> {
@@ -323,11 +340,15 @@ public extension UserDefaultPreferenceKeys {
     }
 
     var realtimeSuggestionDebounce: PreferenceKey<Double> {
-        .init(defaultValue: 0, key: "RealtimeSuggestionDebounce")
+        .init(defaultValue: 0.2, key: "RealtimeSuggestionDebounce")
     }
 
     var acceptSuggestionWithTab: PreferenceKey<Bool> {
         .init(defaultValue: true, key: "AcceptSuggestionWithTab")
+    }
+    
+    var dismissSuggestionWithEsc: PreferenceKey<Bool> {
+        .init(defaultValue: true, key: "DismissSuggestionWithEsc")
     }
     
     var isSuggestionSenseEnabled: PreferenceKey<Bool> {
@@ -381,9 +402,10 @@ public extension UserDefaultPreferenceKeys {
     var defaultChatSystemPrompt: PreferenceKey<String> {
         .init(
             defaultValue: """
-            You are an AI programming assistant.
-            Your reply should be concise, clear, informative and logical.
-            Your reply should be formatted in Markdown.
+            You are a helpful senior programming assistant.
+            You should respond in natural language.
+            Your response should be correct, concise, clear, informative and logical.
+            Use markdown if you need to present code, table, list, etc.
             If you are asked to help perform a task, you MUST think step-by-step, then describe each step concisely.
             If you are asked to explain code, you MUST explain it step-by-step in a ordered list concisely.
             Make your answer short and structured.
@@ -559,6 +581,27 @@ public extension UserDefaultPreferenceKeys {
         .init(
             defaultValue: false,
             key: "FeatureFlag-DisableEnhancedWorkspace"
+        )
+    }
+    
+    var restartXcodeInspectorIfAccessibilityAPIIsMalfunctioning: FeatureFlag {
+        .init(
+            defaultValue: false,
+            key: "FeatureFlag-RestartXcodeInspectorIfAccessibilityAPIIsMalfunctioning"
+        )
+    }
+    
+    var restartXcodeInspectorIfAccessibilityAPIIsMalfunctioningNoTimer: FeatureFlag {
+        .init(
+            defaultValue: true,
+            key: "FeatureFlag-RestartXcodeInspectorIfAccessibilityAPIIsMalfunctioningNoTimer"
+        )
+    }
+    
+    var toastForTheReasonWhyXcodeInspectorNeedsToBeRestarted: FeatureFlag {
+        .init(
+            defaultValue: false,
+            key: "FeatureFlag-ToastForTheReasonWhyXcodeInspectorNeedsToBeRestarted"
         )
     }
 }

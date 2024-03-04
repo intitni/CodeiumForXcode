@@ -45,7 +45,7 @@ public class SwiftFocusedCodeFinder: KnownLanguageFocusedCodeFinder<
         tree: SourceFileSyntax
     ) -> (TextProvider, RangeConverter) {
         let locationConverter = SourceLocationConverter(
-            file: document.documentURL.path,
+            fileName: document.documentURL.path,
             tree: tree
         )
         return (
@@ -62,7 +62,8 @@ public class SwiftFocusedCodeFinder: KnownLanguageFocusedCodeFinder<
 
     public func contextContainingNode(
         _ node: SyntaxProtocol,
-        textProvider: @escaping TextProvider
+        textProvider: @escaping TextProvider,
+        rangeConverter: @escaping RangeConverter
     ) -> NodeInfo? {
         func extractText(_ node: SyntaxProtocol) -> String {
             textProvider(node)
@@ -71,72 +72,78 @@ public class SwiftFocusedCodeFinder: KnownLanguageFocusedCodeFinder<
         switch node {
         case let node as StructDeclSyntax:
             let type = node.structKeyword.text
-            let name = node.identifier.text
+            let name = node.name.text
             return .init(
                 node: node,
                 signature: "\(type) \(name)"
                     .prefixedModifiers(node.modifierAndAttributeText(extractText))
                     .suffixedInheritance(node.inheritanceClauseTexts(extractText))
-                    .replacingOccurrences(of: "\n", with: " "),
+                    .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+                    .joined(separator: " "),
                 name: name
             )
 
         case let node as ClassDeclSyntax:
             let type = node.classKeyword.text
-            let name = node.identifier.text
+            let name = node.name.text
             return .init(
                 node: node,
                 signature: "\(type) \(name)"
                     .prefixedModifiers(node.modifierAndAttributeText(extractText))
                     .suffixedInheritance(node.inheritanceClauseTexts(extractText))
-                    .replacingOccurrences(of: "\n", with: " "),
+                    .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+                    .joined(separator: " "),
                 name: name
             )
 
         case let node as EnumDeclSyntax:
             let type = node.enumKeyword.text
-            let name = node.identifier.text
+            let name = node.name.text
             return .init(
                 node: node,
                 signature: "\(type) \(name)"
                     .prefixedModifiers(node.modifierAndAttributeText(extractText))
                     .suffixedInheritance(node.inheritanceClauseTexts(extractText))
-                    .replacingOccurrences(of: "\n", with: " "),
+                    .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+                    .joined(separator: " "),
                 name: name
             )
 
         case let node as ActorDeclSyntax:
             let type = node.actorKeyword.text
-            let name = node.identifier.text
+            let name = node.name.text
             return .init(
                 node: node,
                 signature: "\(type) \(name)"
                     .prefixedModifiers(node.modifierAndAttributeText(extractText))
                     .suffixedInheritance(node.inheritanceClauseTexts(extractText))
-                    .replacingOccurrences(of: "\n", with: ""),
+                    .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+                    .joined(separator: " "),
                 name: name
             )
 
         case let node as MacroDeclSyntax:
             let type = node.macroKeyword.text
-            let name = node.identifier.text
+            let name = node.name.text
             return .init(
                 node: node,
                 signature: "\(type) \(name)"
                     .prefixedModifiers(node.modifierAndAttributeText(extractText))
-                    .replacingOccurrences(of: "\n", with: " "),
+                    .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+                    .joined(separator: " "),
                 name: name
             )
 
         case let node as ProtocolDeclSyntax:
             let type = node.protocolKeyword.text
-            let name = node.identifier.text
+            let name = node.name.text
             return .init(
                 node: node,
                 signature: "\(type) \(name)"
                     .prefixedModifiers(node.modifierAndAttributeText(extractText))
                     .suffixedInheritance(node.inheritanceClauseTexts(extractText))
-                    .replacingOccurrences(of: "\n", with: " "),
+                    .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+                    .joined(separator: " "),
                 name: name
             )
 
@@ -148,15 +155,16 @@ public class SwiftFocusedCodeFinder: KnownLanguageFocusedCodeFinder<
                 signature: "\(type) \(name)"
                     .prefixedModifiers(node.modifierAndAttributeText(extractText))
                     .suffixedInheritance(node.inheritanceClauseTexts(extractText))
-                    .replacingOccurrences(of: "\n", with: " "),
+                    .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+                    .joined(separator: " "),
                 name: name
             )
 
         case let node as FunctionDeclSyntax:
             let type = node.funcKeyword.text
-            let name = node.identifier.text
+            let name = node.name.text
             let signature = node.signature.trimmedDescription
-                .split(separator: "\n")
+                .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .joined(separator: " ")
 
@@ -176,9 +184,10 @@ public class SwiftFocusedCodeFinder: KnownLanguageFocusedCodeFinder<
                 node: node,
                 signature: "\(type) \(name)\(signature.isEmpty ? "" : "\(signature)")"
                     .prefixedModifiers(node.modifierAndAttributeText(extractText))
-                    .replacingOccurrences(of: "\n", with: " "),
+                    .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+                    .joined(separator: " "),
                 name: name,
-                canBeUsedAsCodeRange: false
+                canBeUsedAsCodeRange: node.bindings.first?.accessorBlock != nil
             )
 
         case let node as AccessorDeclSyntax:
@@ -189,7 +198,8 @@ public class SwiftFocusedCodeFinder: KnownLanguageFocusedCodeFinder<
                 node: node,
                 signature: signature
                     .prefixedModifiers(node.modifierAndAttributeText(extractText))
-                    .replacingOccurrences(of: "\n", with: " "),
+                    .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+                    .joined(separator: " "),
                 name: keyword
             )
 
@@ -203,7 +213,8 @@ public class SwiftFocusedCodeFinder: KnownLanguageFocusedCodeFinder<
                 node: node,
                 signature: signature
                     .prefixedModifiers(node.modifierAndAttributeText(extractText))
-                    .replacingOccurrences(of: "\n", with: " "),
+                    .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+                    .joined(separator: " "),
                 name: "subscript"
             )
 
@@ -214,7 +225,8 @@ public class SwiftFocusedCodeFinder: KnownLanguageFocusedCodeFinder<
                 node: node,
                 signature: "\(signature)"
                     .prefixedModifiers(node.modifierAndAttributeText(extractText))
-                    .replacingOccurrences(of: "\n", with: " "),
+                    .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+                    .joined(separator: " "),
                 name: "init"
             )
 
@@ -225,34 +237,45 @@ public class SwiftFocusedCodeFinder: KnownLanguageFocusedCodeFinder<
                 node: node,
                 signature: signature
                     .prefixedModifiers(node.modifierAndAttributeText(extractText))
-                    .replacingOccurrences(of: "\n", with: " "),
+                    .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+                    .joined(separator: " "),
                 name: "deinit"
             )
 
         case let node as ClosureExprSyntax:
             let signature = "closure"
+            let range = rangeConverter(node)
 
             return .init(
                 node: node,
-                signature: signature.replacingOccurrences(of: "\n", with: " "),
-                name: "closure"
+                signature: signature
+                    .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+                    .joined(separator: " "),
+                name: "closure",
+                canBeUsedAsCodeRange: range.lineCount > 80
             )
 
         case let node as FunctionCallExprSyntax:
             let signature = "function call"
-
             return .init(
                 node: node,
-                signature: signature.replacingOccurrences(of: "\n", with: " "),
+                signature: signature
+                    .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+                    .joined(separator: " "),
                 name: "function call",
                 canBeUsedAsCodeRange: false
             )
 
         case let node as SwitchCaseSyntax:
+            let range = rangeConverter(node)
+            
             return .init(
                 node: node,
-                signature: node.trimmedDescription.replacingOccurrences(of: "\n", with: " "),
-                name: "switch"
+                signature: node.trimmedDescription
+                    .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+                    .joined(separator: " "),
+                name: "switch",
+                canBeUsedAsCodeRange: range.lineCount > 80
             )
 
         default:
@@ -275,15 +298,15 @@ public class SwiftFocusedCodeFinder: KnownLanguageFocusedCodeFinder<
     func findTypeNameFromNode(_ node: SyntaxProtocol) -> String? {
         switch node {
         case let node as ClassDeclSyntax:
-            return node.identifier.text
+            return node.name.text
         case let node as StructDeclSyntax:
-            return node.identifier.text
+            return node.name.text
         case let node as EnumDeclSyntax:
-            return node.identifier.text
+            return node.name.text
         case let node as ActorDeclSyntax:
-            return node.identifier.text
+            return node.name.text
         case let node as ProtocolDeclSyntax:
-            return node.identifier.text
+            return node.name.text
         case let node as ExtensionDeclSyntax:
             return node.extendedType.trimmedDescription
         default:
@@ -304,18 +327,18 @@ extension CursorRange {
 // MARK: - Helper Types
 
 protocol AttributeAndModifierApplicableSyntax {
-    var attributes: AttributeListSyntax? { get }
-    var modifiers: ModifierListSyntax? { get }
+    var attributes: AttributeListSyntax { get }
+    var modifiers: DeclModifierListSyntax { get }
 }
 
 extension AttributeAndModifierApplicableSyntax {
     func modifierAndAttributeText(_ extractText: (SyntaxProtocol) -> String) -> String {
-        let attributeTexts = attributes?.map { attribute in
+        let attributeTexts = attributes.map { attribute in
             extractText(attribute)
-        } ?? []
-        let modifierTexts = modifiers?.map { modifier in
+        }
+        let modifierTexts = modifiers.map { modifier in
             extractText(modifier)
-        } ?? []
+        }
         let prefix = (attributeTexts + modifierTexts).joined(separator: " ")
         return prefix
     }
@@ -334,13 +357,13 @@ extension VariableDeclSyntax: AttributeAndModifierApplicableSyntax {}
 extension InitializerDeclSyntax: AttributeAndModifierApplicableSyntax {}
 extension DeinitializerDeclSyntax: AttributeAndModifierApplicableSyntax {}
 extension AccessorDeclSyntax: AttributeAndModifierApplicableSyntax {
-    var modifiers: SwiftSyntax.ModifierListSyntax? { nil }
+    var modifiers: SwiftSyntax.DeclModifierListSyntax { [] }
 }
 
 extension SubscriptDeclSyntax: AttributeAndModifierApplicableSyntax {}
 
 protocol InheritanceClauseApplicableSyntax {
-    var inheritanceClause: TypeInheritanceClauseSyntax? { get }
+    var inheritanceClause: InheritanceClauseSyntax? { get }
 }
 
 extension StructDeclSyntax: InheritanceClauseApplicableSyntax {}
@@ -352,7 +375,7 @@ extension ExtensionDeclSyntax: InheritanceClauseApplicableSyntax {}
 
 extension InheritanceClauseApplicableSyntax {
     func inheritanceClauseTexts(_ extractText: (SyntaxProtocol) -> String) -> String {
-        inheritanceClause?.inheritedTypeCollection.map { clause in
+        inheritanceClause?.inheritedTypes.map { clause in
             extractText(clause).trimmingCharacters(in: [","])
         }.joined(separator: ", ") ?? ""
     }

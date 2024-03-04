@@ -22,7 +22,8 @@ public final class ActiveDocumentChatContextCollector: ChatContextCollector {
         content: String,
         configuration: ChatGPTConfiguration
     ) async -> ChatContext {
-        guard let info = getEditorInformation() else { return .empty }
+        guard let info = await XcodeInspector.shared.getFocusedEditorContent()
+        else { return .empty }
         let context = getActiveDocumentContext(info)
         activeDocumentContext = context
 
@@ -45,34 +46,29 @@ public final class ActiveDocumentChatContextCollector: ChatContextCollector {
         var functions = [any ChatGPTFunction]()
 
         if !isSensitive {
-            // When the bot is already focusing on a piece of code, it can expand the range.
+            var functionPrompt = """
+            ONLY call it when one of the following conditions are satisfied:
+            - the user ask you about specific line from the latest message, \
+            which is not included in the focused range.
+            """
 
-            if context.focusedContext != nil {
-                functions.append(ExpandFocusRangeFunction(contextCollector: self))
-            }
-
-            // When the bot is not focusing on any code, or the focusing area is not the user's
-            // selection, it can move the focus back to the user's selection.
-
-            if context.focusedContext == nil ||
-                !(context.focusedContext?.codeRange.contains(context.selectionRange) ?? false)
+            if let annotations = context.focusedContext?.otherLineAnnotations,
+               !annotations.isEmpty
             {
-                functions.append(MoveToFocusedCodeFunction(contextCollector: self))
+                functionPrompt += """
+
+                - the user ask about annotations at line \(
+                    Set(annotations.map(\.line)).map(String.init).joined(separator: ",")
+                ).
+                """
             }
 
-            // When there is a line annotation not in the focused area, the bot can move the focus
-            // area
-            // to the code covering the line of the annotation.
+            print(functionPrompt)
 
-            if let focusedContext = context.focusedContext,
-               !focusedContext.otherLineAnnotations.isEmpty
-            {
-                functions.append(MoveToCodeAroundLineFunction(contextCollector: self))
-            }
-
-            if context.focusedContext == nil, !context.lineAnnotations.isEmpty {
-                functions.append(MoveToCodeAroundLineFunction(contextCollector: self))
-            }
+            functions.append(GetCodeCodeAroundLineFunction(
+                contextCollector: self,
+                additionalDescription: functionPrompt
+            ))
         }
 
         return .init(
@@ -102,20 +98,21 @@ public final class ActiveDocumentChatContextCollector: ChatContextCollector {
 
     func extractSystemPrompt(_ context: ActiveDocumentContext, isSensitive: Bool) -> String {
         let start = """
-        ## File and Code Scope
+        ## Active Document
 
-        You can use the following context to answer my questions about the editing document or code. The context shows only a part of the code in the editing document, and will change during the conversation, so it may not match our conversation.
+        The active document is the source code the user is editing right now.
 
         \(
             context.focusedContext == nil
                 ? ""
-                : "When you don't known what I am asking, I am probably referring to the code."
+                : "When you don't known what I am asking, I am probably referring to the document."
         )
-
-        ### Editing Document Context
         """
         let relativePath = "Document Relative Path: \(context.relativePath)"
         let language = "Language: \(context.language.rawValue)"
+
+        let focusedContextExplanation =
+            "Below is the code inside the active document that the user is looking at right now:"
 
         if let focusedContext = context.focusedContext {
             let codeContext = focusedContext.context.isEmpty || isSensitive
@@ -135,7 +132,9 @@ public final class ActiveDocumentChatContextCollector: ChatContextCollector {
                 Ask the user to select the code in the editor to get help. Also tell them the file is in gitignore.
                 """
                 : """
-                Focused Code (start from line \(focusedContext.codeRange.start.line + 1)):
+                Focused Code (from line \(
+                    focusedContext.codeRange.start.line + 1
+                ) to line \(focusedContext.codeRange.end.line + 1)):
                 ```\(context.language.rawValue)
                 \(focusedContext.code)
                 ```
@@ -144,8 +143,8 @@ public final class ActiveDocumentChatContextCollector: ChatContextCollector {
             let fileAnnotations = focusedContext.otherLineAnnotations.isEmpty || isSensitive
                 ? ""
                 : """
-                Other Annotations:\"""
-                (They are not inside the focused code. You don't known how to handle them until you get the code at the line)
+                Out-of-scope Annotations:\"""
+                (The related code are not inside the focused code.)
                 \(
                     focusedContext.otherLineAnnotations
                         .map(convertAnnotationToText)
@@ -170,6 +169,7 @@ public final class ActiveDocumentChatContextCollector: ChatContextCollector {
                 start,
                 relativePath,
                 language,
+                focusedContextExplanation,
                 codeContext,
                 codeRange,
                 code,

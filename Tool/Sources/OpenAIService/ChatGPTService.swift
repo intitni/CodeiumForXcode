@@ -69,8 +69,45 @@ public class ChatGPTService: ChatGPTServiceType {
     public var functionProvider: ChatGPTFunctionProvider
 
     var runningTask: Task<Void, Never>?
-    var buildCompletionStreamAPI: CompletionStreamAPIBuilder = OpenAICompletionStreamAPI.init
-    var buildCompletionAPI: CompletionAPIBuilder = OpenAICompletionAPI.init
+    var buildCompletionStreamAPI: CompletionStreamAPIBuilder = {
+        apiKey, model, endpoint, requestBody, prompt in
+        switch model.format {
+        case .googleAI:
+            return GoogleCompletionStreamAPI(
+                apiKey: apiKey,
+                model: model,
+                requestBody: requestBody,
+                prompt: prompt
+            )
+        case .openAI, .openAICompatible, .azureOpenAI:
+            return OpenAICompletionStreamAPI(
+                apiKey: apiKey,
+                model: model,
+                endpoint: endpoint,
+                requestBody: requestBody
+            )
+        }
+    }
+
+    var buildCompletionAPI: CompletionAPIBuilder = {
+        apiKey, model, endpoint, requestBody, prompt in
+        switch model.format {
+        case .googleAI:
+            return GoogleCompletionAPI(
+                apiKey: apiKey,
+                model: model,
+                requestBody: requestBody,
+                prompt: prompt
+            )
+        case .openAI, .openAICompatible, .azureOpenAI:
+            return OpenAICompletionAPI(
+                apiKey: apiKey,
+                model: model,
+                endpoint: endpoint,
+                requestBody: requestBody
+            )
+        }
+    }
 
     public init(
         memory: ChatGPTMemory = AutoManagedChatGPTMemory(
@@ -278,7 +315,8 @@ extension ChatGPTService {
             configuration.apiKey,
             model,
             url,
-            requestBody
+            requestBody,
+            prompt
         )
 
         #if DEBUG
@@ -294,13 +332,12 @@ extension ChatGPTService {
                         id: proposedId,
                         references: prompt.references
                     )
-                    let (trunks, cancel) = try await api()
-                    for try await trunk in trunks {
+                    let chunks = try await api()
+                    for try await chunk in chunks {
                         if Task.isCancelled {
-                            cancel()
                             throw CancellationError()
                         }
-                        guard let delta = trunk.choices?.first?.delta else { continue }
+                        guard let delta = chunk.choices?.first?.delta else { continue }
 
                         // The api will always return a function call with JSON object.
                         // The first round will contain the function name and an empty argument.
@@ -406,7 +443,8 @@ extension ChatGPTService {
             configuration.apiKey,
             model,
             url,
-            requestBody
+            requestBody,
+            prompt
         )
 
         #if DEBUG

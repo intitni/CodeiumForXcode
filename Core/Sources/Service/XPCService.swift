@@ -1,5 +1,4 @@
 import AppKit
-import Environment
 import Foundation
 import GitHubCopilotService
 import LanguageServerProtocol
@@ -45,7 +44,7 @@ public class XPCService: NSObject, XPCServiceProtocol {
                     return
                 }
                 try Task.checkCancellation()
-                reply(try JSONEncoder().encode(updatedContent), nil)
+                try reply(JSONEncoder().encode(updatedContent), nil)
             } catch {
                 Logger.service.error("\(file):\(line) \(error.localizedDescription)")
                 reply(nil, NSError.from(error))
@@ -102,7 +101,7 @@ public class XPCService: NSObject, XPCServiceProtocol {
             try await handler.acceptSuggestion(editor: editor)
         }
     }
-    
+
     public func getPromptToCodeAcceptedCode(
         editorContent: Data,
         withReply reply: @escaping (Data?, Error?) -> Void
@@ -188,15 +187,29 @@ public class XPCService: NSObject, XPCServiceProtocol {
 
     public func postNotification(name: String, withReply reply: @escaping () -> Void) {
         reply()
-        NSWorkspace.shared.notificationCenter.post(name: .init(name), object: nil)
+        NotificationCenter.default.post(name: .init(name), object: nil)
     }
 
-    public func performAction(
-        name: String,
-        arguments: String,
-        withReply reply: @escaping (String) -> Void
+    // MARK: - Requests
+
+    public func send(
+        endpoint: String,
+        requestBody: Data,
+        reply: @escaping (Data?, Error?) -> Void
     ) {
-        reply("None")
+        Service.shared.handleXPCServiceRequests(
+            endpoint: endpoint,
+            requestBody: requestBody,
+            reply: reply
+        )
     }
+}
+
+struct NoAccessToAccessibilityAPIError: Error, LocalizedError {
+    var errorDescription: String? {
+        "Accessibility API permission is not granted. Please enable in System Settings.app."
+    }
+
+    init() {}
 }
 

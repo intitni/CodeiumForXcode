@@ -95,7 +95,7 @@ public class CodeiumSuggestionService {
             throw CodeiumError.languageServerOutdated
         }
 
-        let metadata = try getMetadata()
+        let metadata = try await getMetadata()
         let tempFolderURL = FileManager.default.temporaryDirectory
         let managerDirectoryURL = tempFolderURL
             .appendingPathComponent("com.intii.CodeiumForXcode")
@@ -179,14 +179,15 @@ public class CodeiumSuggestionService {
 }
 
 extension CodeiumSuggestionService {
-    func getMetadata() throws -> Metadata {
+    func getMetadata() async throws -> Metadata {
         guard let key = authService.key else {
             struct E: Error, LocalizedError {
                 var errorDescription: String? { "Codeium not signed in." }
             }
             throw E()
         }
-        var ideVersion = XcodeInspector.shared.latestActiveXcode?.version ?? fallbackXcodeVersion
+        var ideVersion = await XcodeInspector.shared.safe.latestActiveXcode?.version
+        ?? fallbackXcodeVersion
         let versionNumberSegmentCount = ideVersion.split(separator: ".").count
         if versionNumberSegmentCount == 2 {
             ideVersion += ".0"
@@ -278,9 +279,9 @@ extension CodeiumSuggestionService: CodeiumSuggestionServiceType {
                 return true
             }.map { item in
                 CodeSuggestion(
+                    id: item.completion.completionId,
                     text: item.completion.text,
                     position: cursorPosition,
-                    uuid: item.completion.completionId,
                     range: CursorRange(
                         start: .init(
                             line: item.range.startPosition?.row.flatMap(Int.init) ?? 0,
@@ -290,8 +291,7 @@ extension CodeiumSuggestionService: CodeiumSuggestionServiceType {
                             line: item.range.endPosition?.row.flatMap(Int.init) ?? 0,
                             character: item.range.endPosition?.col.flatMap(Int.init) ?? 0
                         )
-                    ),
-                    displayText: item.completion.text
+                    )
                 )
             } ?? []
         }
@@ -314,7 +314,7 @@ extension CodeiumSuggestionService: CodeiumSuggestionServiceType {
         _ = try? await (try setupServerIfNeeded())
             .sendRequest(CodeiumRequest.AcceptCompletion(requestBody: .init(
                 metadata: getMetadata(),
-                completion_id: suggestion.uuid
+                completion_id: suggestion.id
             )))
     }
 
@@ -360,7 +360,7 @@ func getXcodeVersion() async throws -> String {
                     if let data = try outpipe.fileHandleForReading.readToEnd(),
                        let content = String(data: data, encoding: .utf8)
                     {
-                        let firstLine = content.split(separator: "\n").first ?? ""
+                        let firstLine = content.split(whereSeparator: \.isNewline).first ?? ""
                         var version = firstLine.replacingOccurrences(of: "Xcode ", with: "")
                         if version.isEmpty {
                             version = "14.0"

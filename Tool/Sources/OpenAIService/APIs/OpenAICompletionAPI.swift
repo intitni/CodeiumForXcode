@@ -2,7 +2,7 @@ import AIModel
 import Foundation
 import Preferences
 
-typealias CompletionAPIBuilder = (String, ChatModel, URL, CompletionRequestBody)
+typealias CompletionAPIBuilder = (String, ChatModel, URL, CompletionRequestBody, ChatGPTPrompt)
     -> CompletionAPI
 
 protocol CompletionAPI {
@@ -94,6 +94,8 @@ struct OpenAICompletionAPI: CompletionAPI {
                 request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
             case .azureOpenAI:
                 request.setValue(apiKey, forHTTPHeaderField: "api-key")
+            case .googleAI:
+                assert(false, "Unsupported")
             }
         }
 
