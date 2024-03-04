@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import LanguageClient
 import LanguageServerProtocol
@@ -51,6 +52,11 @@ enum GitHubCopilotError: Error, LocalizedError {
     }
 }
 
+public extension Notification.Name {
+    static let gitHubCopilotShouldRefreshEditorInformation = Notification
+        .Name("com.intii.CopilotForXcode.GitHubCopilotShouldRefreshEditorInformation")
+}
+
 public class GitHubCopilotBaseService {
     let projectRootURL: URL
     var server: GitHubCopilotLSP
@@ -81,14 +87,12 @@ public class GitHubCopilotBaseService {
                     "\"\(agentJSURL.path)\"",
                     "--stdio",
                 ].joined(separator: " ")
-                executionParams = {
-                    Process.ExecutionParameters(
-                        path: "/bin/bash",
-                        arguments: ["-i", "-l", "-c", command],
-                        environment: [:],
-                        currentDirectoryURL: urls.supportURL
-                    )
-                }()
+                executionParams = Process.ExecutionParameters(
+                    path: "/bin/bash",
+                    arguments: ["-i", "-l", "-c", command],
+                    environment: [:],
+                    currentDirectoryURL: urls.supportURL
+                )
             case .shell:
                 let shell = ProcessInfo.processInfo.shellExecutablePath
                 let nodePath = UserDefaults.shared.value(for: \.nodePath)
@@ -97,16 +101,15 @@ public class GitHubCopilotBaseService {
                     "\"\(agentJSURL.path)\"",
                     "--stdio",
                 ].joined(separator: " ")
-                executionParams = {
-                    Process.ExecutionParameters(
-                        path: shell,
-                        arguments: ["-i", "-l", "-c", command],
-                        environment: [:],
-                        currentDirectoryURL: urls.supportURL
-                    )
-                }()
+                executionParams = Process.ExecutionParameters(
+                    path: shell,
+                    arguments: ["-i", "-l", "-c", command],
+                    environment: [:],
+                    currentDirectoryURL: urls.supportURL
+                )
             case .env:
-                let userEnvPath = "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+                let userEnvPath =
+                    "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
                 executionParams = {
                     let nodePath = UserDefaults.shared.value(for: \.nodePath)
                     return Process.ExecutionParameters(
@@ -163,8 +166,16 @@ public class GitHubCopilotBaseService {
         self.server = server
         localProcessServer = localServer
 
-        Task {
-            try await server.sendRequest(GitHubCopilotRequest.SetEditorInfo())
+        Task { [weak self] in
+            _ = try? await server.sendRequest(GitHubCopilotRequest.SetEditorInfo())
+
+            for await notification in NotificationCenter.default
+                .notifications(named: .gitHubCopilotShouldRefreshEditorInformation)
+            {
+                print("Yes!")
+                guard let self else { return }
+                _ = try? await server.sendRequest(GitHubCopilotRequest.SetEditorInfo())
+            }
         }
     }
 
@@ -313,8 +324,14 @@ public final class GitHubCopilotSuggestionService: GitHubCopilotBaseService,
                     return true
                 }
                 .map {
+                    let suggestion = CodeSuggestion(
+                        id: $0.uuid,
+                        text: $0.text,
+                        position: $0.position,
+                        range: $0.range
+                    )
                     if ignoreTrailingNewLinesAndSpaces {
-                        var updated = $0
+                        var updated = suggestion
                         var text = updated.text[...]
                         while let last = text.last, last.isNewline || last.isWhitespace {
                             text = text.dropLast(1)
@@ -322,7 +339,7 @@ public final class GitHubCopilotSuggestionService: GitHubCopilotBaseService,
                         updated.text = String(text)
                         return updated
                     }
-                    return $0
+                    return suggestion
                 }
             try Task.checkCancellation()
             return completions
@@ -339,13 +356,13 @@ public final class GitHubCopilotSuggestionService: GitHubCopilotBaseService,
 
     public func notifyAccepted(_ completion: CodeSuggestion) async {
         _ = try? await server.sendRequest(
-            GitHubCopilotRequest.NotifyAccepted(completionUUID: completion.uuid)
+            GitHubCopilotRequest.NotifyAccepted(completionUUID: completion.id)
         )
     }
 
     public func notifyRejected(_ completions: [CodeSuggestion]) async {
         _ = try? await server.sendRequest(
-            GitHubCopilotRequest.NotifyRejected(completionUUIDs: completions.map(\.uuid))
+            GitHubCopilotRequest.NotifyRejected(completionUUIDs: completions.map(\.id))
         )
     }
 

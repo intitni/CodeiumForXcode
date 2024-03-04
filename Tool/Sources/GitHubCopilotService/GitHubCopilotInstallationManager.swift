@@ -10,7 +10,7 @@ public struct GitHubCopilotInstallationManager {
         return URL(string: link)!
     }
 
-    static let latestSupportedVersion = "1.12.1"
+    static let latestSupportedVersion = "1.19.2"
 
     public init() {}
 
@@ -104,7 +104,7 @@ public struct GitHubCopilotInstallationManager {
                     _ = try await terminal.runCommand(
                         "/usr/bin/unzip",
                         arguments: [targetURL.path],
-                        currentDirectoryPath: urls.executableURL.path,
+                        currentDirectoryURL: urls.executableURL,
                         environment: [:]
                     )
 

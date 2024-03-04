@@ -1,14 +1,16 @@
 import AppKit
+import AsyncPassthroughSubject
 import AXExtension
-import AXNotificationStream
 import Combine
 import Foundation
+import Logger
 
 public class XcodeWindowInspector: ObservableObject {
-    let uiElement: AXUIElement
+    public let uiElement: AXUIElement
 
     init(uiElement: AXUIElement) {
         self.uiElement = uiElement
+        uiElement.setMessagingTimeout(2)
     }
 }
 
@@ -17,60 +19,67 @@ public final class WorkspaceXcodeWindowInspector: XcodeWindowInspector {
     @Published var documentURL: URL = .init(fileURLWithPath: "/")
     @Published var workspaceURL: URL = .init(fileURLWithPath: "/")
     @Published var projectRootURL: URL = .init(fileURLWithPath: "/")
-    private var updateTabsTask: Task<Void, Error>?
     private var focusedElementChangedTask: Task<Void, Error>?
 
-    deinit {
-        updateTabsTask?.cancel()
-        focusedElementChangedTask?.cancel()
-    }
-
     public func refresh() {
-        updateURLs()
+        Task { @XcodeInspectorActor in updateURLs() }
     }
 
-    public init(app: NSRunningApplication, uiElement: AXUIElement) {
+    public init(
+        app: NSRunningApplication,
+        uiElement: AXUIElement,
+        axNotifications: AsyncPassthroughSubject<XcodeAppInstanceInspector.AXNotification>
+    ) {
         self.app = app
         super.init(uiElement: uiElement)
 
-        focusedElementChangedTask = Task { @MainActor in
-            updateURLs()
+        focusedElementChangedTask = Task { [weak self, axNotifications] in
+            await self?.updateURLs()
 
-            Task { @MainActor in
-                // prevent that documentURL may not be available yet
-                try await Task.sleep(nanoseconds: 500_000_000)
-                if documentURL == .init(fileURLWithPath: "/") {
-                    updateURLs()
+            await withThrowingTaskGroup(of: Void.self) { [weak self] group in
+                group.addTask { [weak self] in
+                    // prevent that documentURL may not be available yet
+                    try await Task.sleep(nanoseconds: 500_000_000)
+                    if self?.documentURL == .init(fileURLWithPath: "/") {
+                        await self?.updateURLs()
+                    }
                 }
-            }
 
-            let notifications = AXNotificationStream(
-                app: app,
-                notificationNames: kAXFocusedUIElementChangedNotification
-            )
-
-            for await _ in notifications {
-                try Task.checkCancellation()
-                updateURLs()
+                group.addTask { [weak self] in
+                    for await notification in await axNotifications.notifications() {
+                        guard notification.kind == .focusedUIElementChanged else { continue }
+                        guard let self else { return }
+                        try Task.checkCancellation()
+                        await Task.yield()
+                        await self.updateURLs()
+                    }
+                }
             }
         }
     }
 
+    @XcodeInspectorActor
     func updateURLs() {
         let documentURL = Self.extractDocumentURL(windowElement: uiElement)
         if let documentURL {
-            self.documentURL = documentURL
+            Task { @MainActor in
+                self.documentURL = documentURL
+            }
         }
         let workspaceURL = Self.extractWorkspaceURL(windowElement: uiElement)
         if let workspaceURL {
-            self.workspaceURL = workspaceURL
+            Task { @MainActor in
+                self.workspaceURL = workspaceURL
+            }
         }
         let projectURL = Self.extractProjectURL(
             workspaceURL: workspaceURL,
             documentURL: documentURL
         )
         if let projectURL {
-            projectRootURL = projectURL
+            Task { @MainActor in
+                self.projectRootURL = projectURL
+            }
         }
     }
 

@@ -65,7 +65,8 @@ public class ObjectiveCFocusedCodeFinder: KnownLanguageFocusedCodeFinder<
 
     public func contextContainingNode(
         _ node: Node,
-        textProvider: @escaping TextProvider
+        textProvider: @escaping TextProvider,
+        rangeConverter: @escaping RangeConverter
     ) -> NodeInfo? {
         switch ObjectiveCNodeType(rawValue: node.nodeType ?? "") {
         case .classInterface, .categoryInterface:
@@ -130,11 +131,11 @@ public class ObjectiveCFocusedCodeFinder: KnownLanguageFocusedCodeFinder<
             }
         }
 
-        prefix = prefix.split(separator: "\n")
+        prefix = prefix.split(whereSeparator: \.isNewline)
             .joined(separator: " ")
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        extra = extra.split(separator: "\n")
+        extra = extra.split(whereSeparator: \.isNewline)
             .joined(separator: " ")
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -192,7 +193,8 @@ public class ObjectiveCFocusedCodeFinder: KnownLanguageFocusedCodeFinder<
             signaturePointRange
         ) = node.extractInformationBeforeNode(withFieldName: "body")
         let signature = textProvider(.range(range: signatureRange, pointRange: signaturePointRange))
-            .replacingOccurrences(of: "\n", with: " ")
+            .breakLines(proposedLineEnding: " ", appendLineBreakToLastLine: false)
+            .joined()
             .trimmingCharacters(in: .whitespacesAndNewlines)
         if signature.isEmpty { return nil }
         return .init(
@@ -219,7 +221,8 @@ extension ObjectiveCFocusedCodeFinder {
             signaturePointRange
         ) = node.extractInformationBeforeNode(withFieldName: "body")
         let signature = textProvider(.range(range: signatureRange, pointRange: signaturePointRange))
-            .replacingOccurrences(of: "\n", with: "")
+            .breakLines(proposedLineEnding: " ", appendLineBreakToLastLine: false)
+            .joined()
             .trimmingCharacters(in: .whitespacesAndNewlines)
         if signature.isEmpty { return nil }
         return .init(

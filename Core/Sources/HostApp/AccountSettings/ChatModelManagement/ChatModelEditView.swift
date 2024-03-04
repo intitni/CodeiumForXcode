@@ -22,6 +22,8 @@ struct ChatModelEditView: View {
                             azureOpenAI
                         case .openAICompatible:
                             openAICompatible
+                        case .googleAI:
+                            googleAI
                         }
                     }
                 }
@@ -88,6 +90,8 @@ struct ChatModelEditView: View {
                             Text("Azure OpenAI").tag(format)
                         case .openAICompatible:
                             Text("OpenAI Compatible").tag(format)
+                        case .googleAI:
+                            Text("Google Generative AI").tag(format)
                         }
                     }
                 },
@@ -97,14 +101,27 @@ struct ChatModelEditView: View {
         }
     }
 
-    func baseURLTextField(prompt: Text?) -> some View {
+    func baseURLTextField<V: View>(
+        title: String = "Base URL",
+        prompt: Text?,
+        @ViewBuilder trailingContent: @escaping () -> V
+    ) -> some View {
         BaseURLPicker(
+            title: title,
             prompt: prompt,
             store: store.scope(
                 state: \.baseURLSelection,
                 action: ChatModelEdit.Action.baseURLSelection
-            )
+            ),
+            trailingContent: trailingContent
         )
+    }
+
+    func baseURLTextField(
+        title: String = "Base URL",
+        prompt: Text?
+    ) -> some View {
+        baseURLTextField(title: title, prompt: prompt, trailingContent: { EmptyView() })
     }
 
     var supportsFunctionCallingToggle: some View {
@@ -198,7 +215,9 @@ struct ChatModelEditView: View {
 
     @ViewBuilder
     var openAI: some View {
-        baseURLTextField(prompt: Text("https://api.openai.com"))
+        baseURLTextField(prompt: Text("https://api.openai.com")) {
+            Text("/v1/chat/completions")
+        }
         apiKeyNamePicker
 
         WithViewStore(
@@ -256,7 +275,34 @@ struct ChatModelEditView: View {
 
     @ViewBuilder
     var openAICompatible: some View {
-        baseURLTextField(prompt: Text("https://"))
+        WithViewStore(store.scope(
+            state: \.baseURLSelection,
+            action: ChatModelEdit.Action.baseURLSelection
+        ), removeDuplicates: { $0.isFullURL != $1.isFullURL }) { viewStore in
+            Picker(
+                selection: viewStore.$isFullURL,
+                content: {
+                    Text("Base URL").tag(false)
+                    Text("Full URL").tag(true)
+                },
+                label: { Text("URL") }
+            )
+            .pickerStyle(.segmented)
+        }
+
+        WithViewStore(store, observe: \.isFullURL) { viewStore in
+            baseURLTextField(
+                title: "",
+                prompt: viewStore.state
+                    ? Text("https://api.openai.com/v1/chat/completions")
+                    : Text("https://api.openai.com")
+            ) {
+                if !viewStore.state {
+                    Text("/v1/chat/completions")
+                }
+            }
+        }
+
         apiKeyNamePicker
 
         WithViewStore(
@@ -268,6 +314,35 @@ struct ChatModelEditView: View {
 
         maxTokensTextField
         supportsFunctionCallingToggle
+    }
+
+    @ViewBuilder
+    var googleAI: some View {
+        apiKeyNamePicker
+
+        WithViewStore(
+            store,
+            removeDuplicates: { $0.modelName == $1.modelName }
+        ) { viewStore in
+            TextField("Model Name", text: viewStore.$modelName)
+                .overlay(alignment: .trailing) {
+                    Picker(
+                        "",
+                        selection: viewStore.$modelName,
+                        content: {
+                            if GoogleGenerativeAIModel(rawValue: viewStore.state.modelName) == nil {
+                                Text("Custom Model").tag(viewStore.state.modelName)
+                            }
+                            ForEach(GoogleGenerativeAIModel.allCases, id: \.self) { model in
+                                Text(model.rawValue).tag(model.rawValue)
+                            }
+                        }
+                    )
+                    .frame(width: 20)
+                }
+        }
+
+        maxTokensTextField
     }
 }
 
@@ -301,6 +376,7 @@ struct ChatModelEditView: View {
                 info: .init(
                     apiKeyName: "key",
                     baseURL: "apple.com",
+                    isFullURL: false,
                     maxTokens: 3000,
                     supportsFunctionCalling: false,
                     modelName: "gpt-3.5-turbo"

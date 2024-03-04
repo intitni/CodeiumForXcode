@@ -1,38 +1,71 @@
 import AppKit
 import AsyncAlgorithms
 import AXExtension
-import AXNotificationStream
 import Combine
 import Foundation
+import Logger
+import Preferences
 import SuggestionModel
+import Toast
+
+public extension Notification.Name {
+    static let accessibilityAPIMalfunctioning = Notification.Name("accessibilityAPIMalfunctioning")
+}
+
+@globalActor
+public enum XcodeInspectorActor: GlobalActor {
+    public actor Actor {}
+    public static let shared = Actor()
+}
 
 public final class XcodeInspector: ObservableObject {
     public static let shared = XcodeInspector()
+    
+    @XcodeInspectorActor
+    @dynamicMemberLookup
+    public class Safe {
+        var inspector: XcodeInspector { .shared }
+        nonisolated init() {}
+        public subscript<T>(dynamicMember member: KeyPath<XcodeInspector, T>) -> T {
+            inspector[keyPath: member]
+        }
+    }
+
+    private var toast: ToastController { ToastControllerDependencyKey.liveValue }
 
     private var cancellable = Set<AnyCancellable>()
     private var activeXcodeObservations = Set<Task<Void, Error>>()
+    private var appChangeObservations = Set<Task<Void, Never>>()
     private var activeXcodeCancellable = Set<AnyCancellable>()
+    
+    #warning("TODO: Find a good way to make XcodeInspector thread safe!")
+    public var safe = Safe()
 
-    @Published public internal(set) var activeApplication: AppInstanceInspector?
-    @Published public internal(set) var previousActiveApplication: AppInstanceInspector?
-    @Published public internal(set) var activeXcode: XcodeAppInstanceInspector?
-    @Published public internal(set) var latestActiveXcode: XcodeAppInstanceInspector?
-    @Published public internal(set) var xcodes: [XcodeAppInstanceInspector] = []
-    @Published public internal(set) var activeProjectRootURL: URL? = nil
-    @Published public internal(set) var activeDocumentURL: URL? = nil
-    @Published public internal(set) var activeWorkspaceURL: URL? = nil
-    @Published public internal(set) var focusedWindow: XcodeWindowInspector?
-    @Published public internal(set) var focusedEditor: SourceEditor?
-    @Published public internal(set) var focusedElement: AXUIElement?
-    @Published public internal(set) var completionPanel: AXUIElement?
+    @Published public fileprivate(set) var activeApplication: AppInstanceInspector?
+    @Published public fileprivate(set) var previousActiveApplication: AppInstanceInspector?
+    @Published public fileprivate(set) var activeXcode: XcodeAppInstanceInspector?
+    @Published public fileprivate(set) var latestActiveXcode: XcodeAppInstanceInspector?
+    @Published public fileprivate(set) var xcodes: [XcodeAppInstanceInspector] = []
+    @Published public fileprivate(set) var activeProjectRootURL: URL? = nil
+    @Published public fileprivate(set) var activeDocumentURL: URL? = nil
+    @Published public fileprivate(set) var activeWorkspaceURL: URL? = nil
+    @Published public fileprivate(set) var focusedWindow: XcodeWindowInspector?
+    @Published public fileprivate(set) var focusedEditor: SourceEditor?
+    @Published public fileprivate(set) var focusedElement: AXUIElement?
+    @Published public fileprivate(set) var completionPanel: AXUIElement?
 
-    public var focusedEditorContent: EditorInformation? {
-        guard let documentURL = XcodeInspector.shared.realtimeActiveDocumentURL,
-              let workspaceURL = XcodeInspector.shared.realtimeActiveWorkspaceURL,
-              let projectURL = XcodeInspector.shared.activeProjectRootURL
+    /// Get the content of the source editor.
+    ///
+    /// - note: This method is expensive. It needs to convert index based ranges to line based
+    /// ranges.
+    @XcodeInspectorActor
+    public func getFocusedEditorContent() async -> EditorInformation? {
+        guard let documentURL = realtimeActiveDocumentURL,
+              let workspaceURL = realtimeActiveWorkspaceURL,
+              let projectURL = activeProjectRootURL
         else { return nil }
 
-        let editorContent = XcodeInspector.shared.focusedEditor?.content
+        let editorContent = focusedEditor?.getContent()
         let language = languageIdentifierFromFileURL(documentURL)
         let relativePath = documentURL.path.replacingOccurrences(of: projectURL.path, with: "")
 
@@ -74,10 +107,35 @@ public final class XcodeInspector: ObservableObject {
     }
 
     public var realtimeActiveProjectURL: URL? {
-        latestActiveXcode?.realtimeProjectURL ?? activeWorkspaceURL
+        latestActiveXcode?.realtimeProjectURL ?? activeProjectRootURL
     }
 
     init() {
+        AXUIElement.setGlobalMessagingTimeout(3)
+        Task { @XcodeInspectorActor in
+            restart()
+        }
+    }
+
+    @XcodeInspectorActor
+    public func restart(cleanUp: Bool = false) {
+        if cleanUp {
+            activeXcodeObservations.forEach { $0.cancel() }
+            activeXcodeObservations.removeAll()
+            activeXcodeCancellable.forEach { $0.cancel() }
+            activeXcodeCancellable.removeAll()
+            activeXcode = nil
+            latestActiveXcode = nil
+            activeApplication = nil
+            activeProjectRootURL = nil
+            activeDocumentURL = nil
+            activeWorkspaceURL = nil
+            focusedWindow = nil
+            focusedEditor = nil
+            focusedElement = nil
+            completionPanel = nil
+        }
+
         let runningApplications = NSWorkspace.shared.runningApplications
         xcodes = runningApplications
             .filter { $0.isXcode }
@@ -88,65 +146,125 @@ public final class XcodeInspector: ObservableObject {
             .first(where: \.isActive)
             .map(AppInstanceInspector.init(runningApplication:))
 
-        Task { @MainActor in // Did activate app
+        appChangeObservations.forEach { $0.cancel() }
+        appChangeObservations.removeAll()
+
+        let appChangeTask = Task(priority: .utility) { [weak self] in
+            guard let self else { return }
             if let activeXcode {
                 setActiveXcode(activeXcode)
             }
 
-            let sequence = NSWorkspace.shared.notificationCenter
-                .notifications(named: NSWorkspace.didActivateApplicationNotification)
-            for await notification in sequence {
-                try Task.checkCancellation()
-                guard let app = notification
-                    .userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-                else { continue }
-                if app.isXcode {
-                    if let existed = xcodes.first(
-                        where: { $0.runningApplication.processIdentifier == app.processIdentifier }
-                    ) {
-                        setActiveXcode(existed)
-                    } else {
-                        let new = XcodeAppInstanceInspector(runningApplication: app)
-                        xcodes.append(new)
-                        setActiveXcode(new)
+            await withThrowingTaskGroup(of: Void.self) { [weak self] group in
+                group.addTask { [weak self] in // Did activate app
+                    let sequence = NSWorkspace.shared.notificationCenter
+                        .notifications(named: NSWorkspace.didActivateApplicationNotification)
+                    for await notification in sequence {
+                        try Task.checkCancellation()
+                        guard let self else { return }
+                        guard let app = notification
+                            .userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+                        else { continue }
+                        if app.isXcode {
+                            if let existed = xcodes.first(where: {
+                                $0.processIdentifier == app.processIdentifier && !$0.isTerminated
+                            }) {
+                                Task { @XcodeInspectorActor in
+                                    self.setActiveXcode(existed)
+                                }
+                            } else {
+                                let new = XcodeAppInstanceInspector(runningApplication: app)
+                                Task { @XcodeInspectorActor in
+                                    self.xcodes.append(new)
+                                    self.setActiveXcode(new)
+                                }
+                            }
+                        } else {
+                            let appInspector = AppInstanceInspector(runningApplication: app)
+                            Task { @XcodeInspectorActor in
+                                self.previousActiveApplication = self.activeApplication
+                                self.activeApplication = appInspector
+                            }
+                        }
                     }
-                } else {
-                    previousActiveApplication = activeApplication
-                    activeApplication = AppInstanceInspector(runningApplication: app)
+                }
+
+                group.addTask { [weak self] in // Did terminate app
+                    let sequence = NSWorkspace.shared.notificationCenter
+                        .notifications(named: NSWorkspace.didTerminateApplicationNotification)
+                    for await notification in sequence {
+                        try Task.checkCancellation()
+                        guard let self else { return }
+                        guard let app = notification
+                            .userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+                        else { continue }
+                        if app.isXcode {
+                            let processIdentifier = app.processIdentifier
+                            Task { @XcodeInspectorActor in
+                                self.xcodes.removeAll {
+                                    $0.processIdentifier == processIdentifier || $0.isTerminated
+                                }
+                                if self.latestActiveXcode?.runningApplication
+                                    .processIdentifier == processIdentifier
+                                {
+                                    self.latestActiveXcode = nil
+                                }
+
+                                if let activeXcode = self.xcodes.first(where: \.isActive) {
+                                    self.setActiveXcode(activeXcode)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if UserDefaults.shared
+                    .value(for: \.restartXcodeInspectorIfAccessibilityAPIIsMalfunctioning)
+                {
+                    group.addTask { [weak self] in
+                        while true {
+                            guard let self else { return }
+                            if UserDefaults.shared.value(
+                                for: \.restartXcodeInspectorIfAccessibilityAPIIsMalfunctioningNoTimer
+                            ) {
+                                return
+                            }
+
+                            try await Task.sleep(nanoseconds: 10_000_000_000)
+                            Task { @XcodeInspectorActor in
+                                self.checkForAccessibilityMalfunction("Timer")
+                            }
+                        }
+                    }
+                }
+
+                group.addTask { [weak self] in // malfunctioning
+                    let sequence = NotificationCenter.default
+                        .notifications(named: .accessibilityAPIMalfunctioning)
+                    for await notification in sequence {
+                        try Task.checkCancellation()
+                        guard let self else { return }
+                        await self
+                            .recoverFromAccessibilityMalfunctioning(notification.object as? String)
+                    }
                 }
             }
         }
 
-        Task { @MainActor in // Did terminate app
-            let sequence = NSWorkspace.shared.notificationCenter
-                .notifications(named: NSWorkspace.didTerminateApplicationNotification)
-            for await notification in sequence {
-                try Task.checkCancellation()
-                guard let app = notification
-                    .userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-                else { continue }
-                if app.isXcode {
-                    xcodes.removeAll {
-                        $0.runningApplication.processIdentifier == app.processIdentifier
-                    }
-                    if latestActiveXcode?.runningApplication.processIdentifier
-                        == app.processIdentifier
-                    {
-                        latestActiveXcode = nil
-                    }
+        appChangeObservations.insert(appChangeTask)
+    }
 
-                    if let activeXcode = xcodes.first(where: \.isActive) {
-                        setActiveXcode(activeXcode)
-                    }
-                }
+    public func reactivateObservationsToXcode() {
+        Task { @XcodeInspectorActor in
+            if let activeXcode {
+                setActiveXcode(activeXcode)
+                activeXcode.observeAXNotifications()
             }
         }
     }
 
-    #warning("TODO: Double check before releasing 0.27.0")
-    
-    @MainActor
-    func setActiveXcode(_ xcode: XcodeAppInstanceInspector) {
+    @XcodeInspectorActor
+    private func setActiveXcode(_ xcode: XcodeAppInstanceInspector) {
         previousActiveApplication = activeApplication
         activeApplication = xcode
         xcode.refresh()
@@ -164,10 +282,17 @@ public final class XcodeInspector: ObservableObject {
         activeWorkspaceURL = xcode.workspaceURL
         focusedWindow = xcode.focusedWindow
 
-        let setFocusedElement = { [weak self] in
+        let setFocusedElement = { @XcodeInspectorActor [weak self] in
             guard let self else { return }
             focusedElement = xcode.appElement.focusedElement
             if let editorElement = focusedElement, editorElement.isSourceEditor {
+                focusedEditor = .init(
+                    runningApplication: xcode.runningApplication,
+                    element: editorElement
+                )
+            } else if let element = focusedElement,
+                      let editorElement = element.firstParent(where: \.isSourceEditor)
+            {
                 focusedEditor = .init(
                     runningApplication: xcode.runningApplication,
                     element: editorElement
@@ -178,354 +303,101 @@ public final class XcodeInspector: ObservableObject {
         }
 
         setFocusedElement()
-        let focusedElementChanged = Task { @MainActor in
-            let notification = AXNotificationStream(
-                app: xcode.runningApplication,
-                notificationNames: kAXFocusedUIElementChangedNotification
-            )
-            for await _ in notification {
-                try Task.checkCancellation()
-                setFocusedElement()
+        let focusedElementChanged = Task { @XcodeInspectorActor in
+            for await notification in await xcode.axNotifications.notifications() {
+                if notification.kind == .focusedUIElementChanged {
+                    try Task.checkCancellation()
+                    setFocusedElement()
+                }
             }
         }
 
         activeXcodeObservations.insert(focusedElementChanged)
 
+        if UserDefaults.shared
+            .value(for: \.restartXcodeInspectorIfAccessibilityAPIIsMalfunctioning)
+        {
+            let malfunctionCheck = Task { @XcodeInspectorActor [weak self] in
+                if #available(macOS 13.0, *) {
+                    let notifications = await xcode.axNotifications.notifications().filter {
+                        $0.kind == .uiElementDestroyed
+                    }.debounce(for: .milliseconds(1000))
+                    for await _ in notifications {
+                        guard let self else { return }
+                        try Task.checkCancellation()
+                        self.checkForAccessibilityMalfunction("Element Destroyed")
+                    }
+                }
+            }
+
+            activeXcodeObservations.insert(malfunctionCheck)
+
+            checkForAccessibilityMalfunction("Reactivate Xcode")
+        }
+
         xcode.$completionPanel.sink { [weak self] element in
-            self?.completionPanel = element
+            Task { @XcodeInspectorActor in self?.completionPanel = element }
         }.store(in: &activeXcodeCancellable)
 
         xcode.$documentURL.sink { [weak self] url in
-            self?.activeDocumentURL = url
+            Task { @XcodeInspectorActor in self?.activeDocumentURL = url }
         }.store(in: &activeXcodeCancellable)
 
         xcode.$workspaceURL.sink { [weak self] url in
-            self?.activeWorkspaceURL = url
+            Task { @XcodeInspectorActor in self?.activeWorkspaceURL = url }
         }.store(in: &activeXcodeCancellable)
 
         xcode.$projectRootURL.sink { [weak self] url in
-            self?.activeProjectRootURL = url
+            Task { @XcodeInspectorActor in self?.activeProjectRootURL = url }
         }.store(in: &activeXcodeCancellable)
 
         xcode.$focusedWindow.sink { [weak self] window in
-            self?.focusedWindow = window
+            Task { @XcodeInspectorActor in self?.focusedWindow = window }
         }.store(in: &activeXcodeCancellable)
     }
-}
 
-// MARK: - AppInstanceInspector
+    private var lastRecoveryFromAccessibilityMalfunctioningTimeStamp = Date()
 
-public class AppInstanceInspector: ObservableObject {
-    public let appElement: AXUIElement
-    public let runningApplication: NSRunningApplication
-    public var isActive: Bool { runningApplication.isActive }
-    public var isXcode: Bool { runningApplication.isXcode }
-    public var isExtensionService: Bool { runningApplication.isCopilotForXcodeExtensionService }
+    @XcodeInspectorActor
+    private func checkForAccessibilityMalfunction(_ source: String) {
+        guard Date().timeIntervalSince(lastRecoveryFromAccessibilityMalfunctioningTimeStamp) > 5
+        else { return }
 
-    init(runningApplication: NSRunningApplication) {
-        self.runningApplication = runningApplication
-        appElement = AXUIElementCreateApplication(runningApplication.processIdentifier)
-    }
-}
-
-// MARK: - XcodeAppInstanceInspector
-
-public final class XcodeAppInstanceInspector: AppInstanceInspector {
-    @Published public var focusedWindow: XcodeWindowInspector?
-    @Published public var documentURL: URL? = nil
-    @Published public var workspaceURL: URL? = nil
-    @Published public var projectRootURL: URL? = nil
-    @Published public var workspaces = [WorkspaceIdentifier: Workspace]()
-    public var realtimeWorkspaces: [WorkspaceIdentifier: WorkspaceInfo] {
-        updateWorkspaceInfo()
-        return workspaces.mapValues(\.info)
-    }
-
-    @Published public private(set) var completionPanel: AXUIElement?
-
-    public var realtimeDocumentURL: URL? {
-        guard let window = appElement.focusedWindow,
-              window.identifier == "Xcode.WorkspaceWindow"
-        else { return nil }
-
-        return WorkspaceXcodeWindowInspector.extractDocumentURL(windowElement: window)
-    }
-
-    public var realtimeWorkspaceURL: URL? {
-        guard let window = appElement.focusedWindow,
-              window.identifier == "Xcode.WorkspaceWindow"
-        else { return nil }
-
-        return WorkspaceXcodeWindowInspector.extractWorkspaceURL(windowElement: window)
-    }
-
-    public var realtimeProjectURL: URL? {
-        let workspaceURL = realtimeWorkspaceURL
-        let documentURL = realtimeDocumentURL
-        return WorkspaceXcodeWindowInspector.extractProjectURL(
-            workspaceURL: workspaceURL,
-            documentURL: documentURL
-        )
-    }
-
-    var _version: String?
-    public var version: String? {
-        if let _version { return _version }
-        guard let plistPath = runningApplication.bundleURL?
-            .appendingPathComponent("Contents")
-            .appendingPathComponent("version.plist")
-            .path
-        else { return nil }
-        guard let plistData = FileManager.default.contents(atPath: plistPath) else { return nil }
-        var format = PropertyListSerialization.PropertyListFormat.xml
-        guard let plistDict = try? PropertyListSerialization.propertyList(
-            from: plistData,
-            options: .mutableContainersAndLeaves,
-            format: &format
-        ) as? [String: AnyObject] else { return nil }
-        let result = plistDict["CFBundleShortVersionString"] as? String
-        _version = result
-        return result
-    }
-
-    private var longRunningTasks = Set<Task<Void, Error>>()
-    private var focusedWindowObservations = Set<AnyCancellable>()
-
-    deinit {
-        for task in longRunningTasks { task.cancel() }
-    }
-
-    override init(runningApplication: NSRunningApplication) {
-        super.init(runningApplication: runningApplication)
-
-        observeFocusedWindow()
-        observeAXNotifications()
-
-        Task {
-            try await Task.sleep(nanoseconds: 3_000_000_000)
-            // Sometimes the focused window may not be ready on app launch.
-            if !(focusedWindow is WorkspaceXcodeWindowInspector) {
-                observeFocusedWindow()
-            }
-        }
-    }
-
-    func observeFocusedWindow() {
-        if let window = appElement.focusedWindow {
-            if window.identifier == "Xcode.WorkspaceWindow" {
-                let window = WorkspaceXcodeWindowInspector(
-                    app: runningApplication,
-                    uiElement: window
+        if let editor = focusedEditor, !editor.element.isSourceEditor {
+            NotificationCenter.default.post(
+                name: .accessibilityAPIMalfunctioning,
+                object: "Source Editor Element Corrupted: \(source)"
+            )
+        } else if let element = activeXcode?.appElement.focusedElement {
+            if element.description != focusedElement?.description ||
+                element.role != focusedElement?.role
+            {
+                NotificationCenter.default.post(
+                    name: .accessibilityAPIMalfunctioning,
+                    object: "Element Inconsistency: \(source)"
                 )
-                focusedWindow = window
-
-                // should find a better solution to do this thread safe
-                Task { @MainActor in
-                    focusedWindowObservations.forEach { $0.cancel() }
-                    focusedWindowObservations.removeAll()
-
-                    documentURL = window.documentURL
-                    workspaceURL = window.workspaceURL
-                    projectRootURL = window.projectRootURL
-
-                    window.$documentURL
-                        .filter { $0 != .init(fileURLWithPath: "/") }
-                        .sink { [weak self] url in
-                            self?.documentURL = url
-                        }.store(in: &focusedWindowObservations)
-                    window.$workspaceURL
-                        .filter { $0 != .init(fileURLWithPath: "/") }
-                        .sink { [weak self] url in
-                            self?.workspaceURL = url
-                        }.store(in: &focusedWindowObservations)
-                    window.$projectRootURL
-                        .filter { $0 != .init(fileURLWithPath: "/") }
-                        .sink { [weak self] url in
-                            self?.projectRootURL = url
-                        }.store(in: &focusedWindowObservations)
-                }
-            } else {
-                let window = XcodeWindowInspector(uiElement: window)
-                focusedWindow = window
             }
+        }
+    }
+
+    @XcodeInspectorActor
+    private func recoverFromAccessibilityMalfunctioning(_ source: String?) {
+        let message = """
+        Accessibility API malfunction detected: \
+        \(source ?? "").
+        Resetting active Xcode.
+        """
+
+        if UserDefaults.shared.value(for: \.toastForTheReasonWhyXcodeInspectorNeedsToBeRestarted) {
+            toast.toast(content: message, type: .warning)
         } else {
-            focusedWindow = nil
+            Logger.service.info(message)
         }
-    }
-
-    func refresh() {
-        if let focusedWindow = focusedWindow as? WorkspaceXcodeWindowInspector {
-            focusedWindow.refresh()
-        } else {
-            observeFocusedWindow()
+        if let activeXcode {
+            lastRecoveryFromAccessibilityMalfunctioningTimeStamp = Date()
+            setActiveXcode(activeXcode)
+            activeXcode.observeAXNotifications()
         }
-    }
-
-    func observeAXNotifications() {
-        longRunningTasks.forEach { $0.cancel() }
-        longRunningTasks = []
-
-        let focusedWindowChanged = Task {
-            let notification = AXNotificationStream(
-                app: runningApplication,
-                notificationNames: kAXFocusedWindowChangedNotification
-            )
-            for await _ in notification {
-                try Task.checkCancellation()
-                observeFocusedWindow()
-            }
-        }
-
-        longRunningTasks.insert(focusedWindowChanged)
-
-        updateWorkspaceInfo()
-        let updateTabsTask = Task { @MainActor in
-            let notification = AXNotificationStream(
-                app: runningApplication,
-                notificationNames: kAXFocusedUIElementChangedNotification,
-                kAXApplicationDeactivatedNotification
-            )
-            if #available(macOS 13.0, *) {
-                for await _ in notification.debounce(for: .seconds(2)) {
-                    try Task.checkCancellation()
-                    updateWorkspaceInfo()
-                }
-            } else {
-                for await _ in notification {
-                    try Task.checkCancellation()
-                    updateWorkspaceInfo()
-                }
-            }
-        }
-
-        longRunningTasks.insert(updateTabsTask)
-
-        let completionPanelTask = Task {
-            let stream = AXNotificationStream(
-                app: runningApplication,
-                notificationNames: kAXCreatedNotification, kAXUIElementDestroyedNotification
-            )
-
-            for await event in stream {
-                // We can only observe the creation and closing of the parent
-                // of the completion panel.
-                let isCompletionPanel = {
-                    event.element.firstChild { element in
-                        element.identifier == "_XC_COMPLETION_TABLE_"
-                    } != nil
-                }
-                switch event.name {
-                case kAXCreatedNotification:
-                    if isCompletionPanel() {
-                        completionPanel = event.element
-                    }
-                case kAXUIElementDestroyedNotification:
-                    if isCompletionPanel() {
-                        completionPanel = nil
-                    }
-                default: break
-                }
-
-                try Task.checkCancellation()
-            }
-        }
-
-        longRunningTasks.insert(completionPanelTask)
-    }
-}
-
-// MARK: - Workspace Info
-
-extension XcodeAppInstanceInspector {
-    public enum WorkspaceIdentifier: Hashable {
-        case url(URL)
-        case unknown
-    }
-
-    public class Workspace {
-        public let element: AXUIElement
-        public var info: WorkspaceInfo
-
-        /// When a window is closed, all it's properties will be set to nil.
-        /// Since we can't get notification for window closing,
-        /// we will use it to check if the window is closed.
-        var isValid: Bool {
-            element.parent != nil
-        }
-
-        init(element: AXUIElement) {
-            self.element = element
-            info = .init(tabs: [])
-        }
-    }
-
-    public struct WorkspaceInfo {
-        public let tabs: Set<String>
-
-        public func combined(with info: WorkspaceInfo) -> WorkspaceInfo {
-            return .init(tabs: tabs.union(info.tabs))
-        }
-    }
-
-    func updateWorkspaceInfo() {
-        let workspaceInfoInVisibleSpace = Self.fetchVisibleWorkspaces(runningApplication)
-        workspaces = Self.updateWorkspace(workspaces, with: workspaceInfoInVisibleSpace)
-    }
-
-    /// Use the project path as the workspace identifier.
-    static func workspaceIdentifier(_ window: AXUIElement) -> WorkspaceIdentifier {
-        if let url = WorkspaceXcodeWindowInspector.extractWorkspaceURL(windowElement: window) {
-            return WorkspaceIdentifier.url(url)
-        }
-        return WorkspaceIdentifier.unknown
-    }
-
-    /// With Accessibility API, we can ONLY get the information of visible windows.
-    static func fetchVisibleWorkspaces(
-        _ app: NSRunningApplication
-    ) -> [WorkspaceIdentifier: Workspace] {
-        let app = AXUIElementCreateApplication(app.processIdentifier)
-        let windows = app.windows.filter { $0.identifier == "Xcode.WorkspaceWindow" }
-
-        var dict = [WorkspaceIdentifier: Workspace]()
-
-        for window in windows {
-            let workspaceIdentifier = workspaceIdentifier(window)
-
-            let tabs = {
-                guard let editArea = window.firstChild(where: { $0.description == "editor area" })
-                else { return Set<String>() }
-                var allTabs = Set<String>()
-                let tabBars = editArea.children { $0.description == "tab bar" }
-                for tabBar in tabBars {
-                    let tabs = tabBar.children { $0.roleDescription == "tab" }
-                    for tab in tabs {
-                        allTabs.insert(tab.title)
-                    }
-                }
-                return allTabs
-            }()
-
-            let workspace = Workspace(element: window)
-            workspace.info = .init(tabs: tabs)
-            dict[workspaceIdentifier] = workspace
-        }
-        return dict
-    }
-
-    static func updateWorkspace(
-        _ old: [WorkspaceIdentifier: Workspace],
-        with new: [WorkspaceIdentifier: Workspace]
-    ) -> [WorkspaceIdentifier: Workspace] {
-        var updated = old.filter { $0.value.isValid } // remove closed windows.
-        for (identifier, workspace) in new {
-            if let existed = updated[identifier] {
-                existed.info = workspace.info
-            } else {
-                updated[identifier] = workspace
-            }
-        }
-        return updated
     }
 }
 

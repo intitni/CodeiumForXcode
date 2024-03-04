@@ -82,7 +82,7 @@ let package = Package(
             name: "Client",
             dependencies: [
                 .product(name: "XPCShared", package: "Tool"),
-                .product(name: "SuggestionService", package: "Tool"),
+                .product(name: "SuggestionProvider", package: "Tool"),
                 .product(name: "SuggestionModel", package: "Tool"),
                 .product(name: "Logger", package: "Tool"),
                 .product(name: "Preferences", package: "Tool"),
@@ -92,16 +92,16 @@ let package = Package(
             name: "Service",
             dependencies: [
                 "SuggestionWidget",
+                "SuggestionService",
                 "ChatService",
                 "PromptToCodeService",
                 "ServiceUpdateMigration",
                 "ChatGPTChatTab",
                 .product(name: "XPCShared", package: "Tool"),
-                .product(name: "SuggestionService", package: "Tool"),
+                .product(name: "SuggestionProvider", package: "Tool"),
                 .product(name: "Workspace", package: "Tool"),
                 .product(name: "UserDefaultsObserver", package: "Tool"),
                 .product(name: "AppMonitoring", package: "Tool"),
-                .product(name: "Environment", package: "Tool"),
                 .product(name: "SuggestionModel", package: "Tool"),
                 .product(name: "ChatTab", package: "Tool"),
                 .product(name: "Logger", package: "Tool"),
@@ -122,9 +122,8 @@ let package = Package(
                 "Client",
                 "SuggestionInjector",
                 .product(name: "XPCShared", package: "Tool"),
-                .product(name: "SuggestionService", package: "Tool"),
+                .product(name: "SuggestionProvider", package: "Tool"),
                 .product(name: "SuggestionModel", package: "Tool"),
-                .product(name: "Environment", package: "Tool"),
                 .product(name: "Preferences", package: "Tool"),
             ]
         ),
@@ -137,7 +136,7 @@ let package = Package(
                 "Client",
                 "LaunchAgentManager",
                 "PlusFeatureFlag",
-                .product(name: "SuggestionService", package: "Tool"),
+                .product(name: "SuggestionProvider", package: "Tool"),
                 .product(name: "Toast", package: "Tool"),
                 .product(name: "SharedUIComponents", package: "Tool"),
                 .product(name: "SuggestionModel", package: "Tool"),
@@ -154,6 +153,15 @@ let package = Package(
         // MARK: - Suggestion Service
 
         .target(
+            name: "SuggestionService",
+            dependencies: [
+                .product(name: "SuggestionModel", package: "Tool"),
+                .product(name: "SuggestionProvider", package: "Tool")
+            ].pro([
+                "ProExtension",
+            ])
+        ),
+        .target(
             name: "SuggestionInjector",
             dependencies: [.product(name: "SuggestionModel", package: "Tool")]
         ),
@@ -169,7 +177,6 @@ let package = Package(
             dependencies: [
                 .product(name: "FocusedCodeFinder", package: "Tool"),
                 .product(name: "SuggestionModel", package: "Tool"),
-                .product(name: "Environment", package: "Tool"),
                 .product(name: "OpenAIService", package: "Tool"),
                 .product(name: "AppMonitoring", package: "Tool"),
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
@@ -197,7 +204,6 @@ let package = Package(
 
                 .product(name: "ChatContextCollector", package: "Tool"),
                 .product(name: "AppMonitoring", package: "Tool"),
-                .product(name: "Environment", package: "Tool"),
                 .product(name: "Parsing", package: "swift-parsing"),
                 .product(name: "OpenAIService", package: "Tool"),
                 .product(name: "Preferences", package: "Tool"),
@@ -209,7 +215,7 @@ let package = Package(
         .target(
             name: "ChatPlugin",
             dependencies: [
-                .product(name: "Environment", package: "Tool"),
+                .product(name: "AppMonitoring", package: "Tool"),
                 .product(name: "OpenAIService", package: "Tool"),
                 .product(name: "Terminal", package: "Tool"),
             ]
@@ -236,10 +242,10 @@ let package = Package(
             dependencies: [
                 "PromptToCodeService",
                 "ChatGPTChatTab",
+                .product(name: "Toast", package: "Tool"),
                 .product(name: "UserDefaultsObserver", package: "Tool"),
                 .product(name: "SharedUIComponents", package: "Tool"),
                 .product(name: "AppMonitoring", package: "Tool"),
-                .product(name: "Environment", package: "Tool"),
                 .product(name: "ChatTab", package: "Tool"),
                 .product(name: "Logger", package: "Tool"),
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
@@ -257,13 +263,14 @@ let package = Package(
             name: "UpdateChecker",
             dependencies: [
                 "Sparkle",
+                .product(name: "Preferences", package: "Tool"),
                 .product(name: "Logger", package: "Tool"),
             ]
         ),
         .target(
             name: "ServiceUpdateMigration",
             dependencies: [
-                .product(name: "SuggestionService", package: "Tool"),
+                .product(name: "SuggestionProvider", package: "Tool"),
                 .product(name: "Preferences", package: "Tool"),
                 .product(name: "Keychain", package: "Tool"),
             ]
