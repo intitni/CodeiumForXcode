@@ -73,6 +73,10 @@ struct GoogleCompletionAPI: CompletionAPI {
                 throw error
             case .responseStoppedEarly:
                 throw error
+            case .invalidAPIKey:
+                throw error
+            case .unsupportedUserLocation:
+                throw error
             }
         } catch {
             throw error

@@ -68,6 +68,10 @@ struct GoogleCompletionStreamAPI: CompletionStreamAPI {
                         continuation.finish(throwing: error)
                     case .responseStoppedEarly:
                         continuation.finish(throwing: error)
+                    case .invalidAPIKey:
+                        continuation.finish(throwing: error)
+                    case .unsupportedUserLocation:
+                        continuation.finish(throwing: error)
                     }
                 } catch {
                     continuation.finish(throwing: error)

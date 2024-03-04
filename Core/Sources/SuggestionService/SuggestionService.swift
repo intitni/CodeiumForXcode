@@ -27,7 +27,7 @@ public actor SuggestionService: SuggestionServiceType {
 
     var serviceType: SuggestionFeatureProvider {
 //        UserDefaults.shared.value(for: \.suggestionFeatureProvider)
-        .codeium
+        .builtIn(.codeium)
     }
 
     public init(
