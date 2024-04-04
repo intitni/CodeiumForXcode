@@ -51,7 +51,11 @@ public extension SuggestionWidgetController {
     }
 
     func discardSuggestion() {
-        store.send(.panel(.discardSuggestion))
+        store.withState { state in
+            if state.panelState.content.suggestion != nil {
+                store.send(.panel(.discardSuggestion))
+            }
+        }
     }
 
     #warning("TODO: Make a progress controller that doesn't use TCA.")
@@ -66,7 +70,7 @@ public extension SuggestionWidgetController {
     }
 
     func presentError(_ errorDescription: String) {
-        store.send(.toastPanel(.toast(.toast(errorDescription, .error))))
+        store.send(.toastPanel(.toast(.toast(errorDescription, .error, nil))))
     }
 
     func presentChatRoom() {

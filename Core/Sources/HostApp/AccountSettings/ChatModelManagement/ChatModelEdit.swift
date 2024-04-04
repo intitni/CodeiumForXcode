@@ -1,4 +1,5 @@
 import AIModel
+import Toast
 import ComposableArchitecture
 import Dependencies
 import Keychain
@@ -14,6 +15,7 @@ struct ChatModelEdit: ReducerProtocol {
         @BindingState var maxTokens: Int = 4000
         @BindingState var supportsFunctionCalling: Bool = true
         @BindingState var modelName: String = ""
+        @BindingState var ollamaKeepAlive: String = ""
         var apiKeyName: String { apiKeySelection.apiKeyName }
         var baseURL: String { baseURLSelection.baseURL }
         var isFullURL: Bool { baseURLSelection.isFullURL }
@@ -39,7 +41,12 @@ struct ChatModelEdit: ReducerProtocol {
         case baseURLSelection(BaseURLSelection.Action)
     }
 
-    @Dependency(\.toast) var toast
+    var toast: (String, ToastType) -> Void {
+        @Dependency(\.namespacedToast) var toast
+        return {
+            toast($0, $1, "ChatModelEdit")
+        }
+    }
     @Dependency(\.apiKeyKeychain) var keychain
 
     var body: some ReducerProtocol<State, Action> {
@@ -48,7 +55,7 @@ struct ChatModelEdit: ReducerProtocol {
         Scope(state: \.apiKeySelection, action: /Action.apiKeySelection) {
             APIKeySelection()
         }
-        
+
         Scope(state: \.baseURLSelection, action: /Action.baseURLSelection) {
             BaseURLSelection()
         }
@@ -85,14 +92,22 @@ struct ChatModelEdit: ReducerProtocol {
                 )
                 return .run { send in
                     do {
-                        let reply =
-                            try await ChatGPTService(
-                                configuration: UserPreferenceChatGPTConfiguration()
-                                    .overriding {
-                                        $0.model = model
-                                    }
-                            ).sendAndWait(content: "Hello")
+                        let service = ChatGPTService(
+                            configuration: UserPreferenceChatGPTConfiguration()
+                                .overriding {
+                                    $0.model = model
+                                }
+                        )
+                        let reply = try await service
+                            .sendAndWait(content: "Respond with \"Test succeeded\"")
                         await send(.testSucceeded(reply ?? "No Message"))
+                        let stream = try await service
+                            .send(content: "Respond with \"Stream response is working\"")
+                        var streamReply = ""
+                        for try await chunk in stream {
+                            streamReply += chunk
+                        }
+                        await send(.testSucceeded(streamReply))
                     } catch {
                         await send(.testFailed(error.localizedDescription))
                     }
@@ -100,12 +115,12 @@ struct ChatModelEdit: ReducerProtocol {
 
             case let .testSucceeded(message):
                 state.isTesting = false
-                toast(message, .info)
+                toast(message.trimmingCharacters(in: .whitespacesAndNewlines), .info)
                 return .none
 
             case let .testFailed(message):
                 state.isTesting = false
-                toast(message, .error)
+                toast(message.trimmingCharacters(in: .whitespacesAndNewlines), .error)
                 return .none
 
             case .refreshAvailableModelNames:
@@ -131,14 +146,23 @@ struct ChatModelEdit: ReducerProtocol {
                         state.suggestedMaxTokens = nil
                     }
                     return .none
+                case .claude:
+                    if let knownModel = ClaudeChatCompletionsService
+                        .KnownModel(rawValue: state.modelName)
+                    {
+                        state.suggestedMaxTokens = knownModel.contextWindow
+                    } else {
+                        state.suggestedMaxTokens = nil
+                    }
+                    return .none
                 default:
                     state.suggestedMaxTokens = nil
                     return .none
                 }
-                
+
             case .apiKeySelection:
                 return .none
-                
+
             case .baseURLSelection:
                 return .none
 
@@ -169,6 +193,7 @@ extension ChatModelEdit.State {
             maxTokens: model.info.maxTokens,
             supportsFunctionCalling: model.info.supportsFunctionCalling,
             modelName: model.info.modelName,
+            ollamaKeepAlive: model.info.ollamaInfo.keepAlive,
             apiKeySelection: .init(
                 apiKeyName: model.info.apiKeyName,
                 apiKeyManagement: .init(availableAPIKeyNames: [model.info.apiKeyName])
@@ -190,12 +215,15 @@ extension ChatModel {
                 isFullURL: state.isFullURL,
                 maxTokens: state.maxTokens,
                 supportsFunctionCalling: {
-                    if case .googleAI = state.format {
+                    switch state.format {
+                    case .googleAI, .ollama, .claude:
                         return false
+                    case .azureOpenAI, .openAI, .openAICompatible:
+                        return state.supportsFunctionCalling
                     }
-                    return state.supportsFunctionCalling
                 }(),
-                modelName: state.modelName.trimmingCharacters(in: .whitespacesAndNewlines)
+                modelName: state.modelName.trimmingCharacters(in: .whitespacesAndNewlines),
+                ollamaInfo: .init(keepAlive: state.ollamaKeepAlive)
             )
         )
     }

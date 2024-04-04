@@ -9,13 +9,13 @@ public struct DisplayedChatMessage: Equatable {
     public enum Role: Equatable {
         case user
         case assistant
-        case function
+        case tool
         case ignored
     }
 
     public struct Reference: Equatable {
         public typealias Kind = ChatMessage.Reference.Kind
-        
+
         public var title: String
         public var subtitle: String
         public var uri: String
@@ -135,7 +135,7 @@ struct Chat: ReducerProtocol {
                     await send(.focusOnTextField)
                     await send(.refresh)
                 }
-                
+
             case .refresh:
                 return .run { send in
                     await send(.chatMenu(.refresh))
@@ -226,8 +226,12 @@ struct Chat: ReducerProtocol {
                             cancellable.cancel()
                         }
                     }
-                    for await _ in stream {
+                    let debouncedHistoryChange = TimedDebounceFunction(duration: 0.2) {
                         await send(.historyChanged)
+                    }
+                    
+                    for await _ in stream {
+                        await debouncedHistoryChange()
                     }
                 }.cancellable(id: CancelID.observeHistoryChange(id), cancelInFlight: true)
 
@@ -298,8 +302,9 @@ struct Chat: ReducerProtocol {
                 }.cancellable(id: CancelID.observeDefaultScopesChange(id), cancelInFlight: true)
 
             case .historyChanged:
-                state.history = service.chatHistory.map { message in
-                    .init(
+                state.history = service.chatHistory.flatMap { message in
+                    var all = [DisplayedChatMessage]()
+                    all.append(.init(
                         id: message.id,
                         role: {
                             switch message.role {
@@ -312,7 +317,6 @@ struct Chat: ReducerProtocol {
                                     return .assistant
                                 }
                                 return .ignored
-                            case .function: return .function
                             }
                         }(),
                         text: message.summary ?? message.content ?? "",
@@ -325,7 +329,18 @@ struct Chat: ReducerProtocol {
                                 kind: $0.kind
                             )
                         }
-                    )
+                    ))
+
+                    for call in message.toolCalls ?? [] {
+                        all.append(.init(
+                            id: message.id + call.id,
+                            role: .tool,
+                            text: call.response.summary ?? call.response.content,
+                            references: []
+                        ))
+                    }
+
+                    return all
                 }
 
                 state.title = {
@@ -401,7 +416,7 @@ struct ChatMenu: ReducerProtocol {
                 return .run {
                     await $0(.refresh)
                 }
-                
+
             case .refresh:
                 state.temperatureOverride = service.configuration.overriding.temperature
                 state.chatModelIdOverride = service.configuration.overriding.modelId
@@ -439,3 +454,33 @@ struct ChatMenu: ReducerProtocol {
     }
 }
 
+private actor TimedDebounceFunction {
+    let duration: TimeInterval
+    let block: () async -> Void
+
+    var task: Task<Void, Error>?
+    var lastFireTime: Date = .init(timeIntervalSince1970: 0)
+
+    init(duration: TimeInterval, block: @escaping () async -> Void) {
+        self.duration = duration
+        self.block = block
+    }
+
+    func callAsFunction() async {
+        task?.cancel()
+        if lastFireTime.timeIntervalSinceNow < -duration {
+            await fire()
+            task = nil
+        } else {
+            task = Task.detached { [weak self, duration] in
+                try await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
+                await self?.fire()
+            }
+        }
+    }
+    
+    func fire() async {
+        lastFireTime = Date()
+        await block()
+    }
+}
