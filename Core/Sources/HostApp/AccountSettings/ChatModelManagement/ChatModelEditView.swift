@@ -1,5 +1,6 @@
 import AIModel
 import ComposableArchitecture
+import OpenAIService
 import Preferences
 import SwiftUI
 
@@ -24,6 +25,10 @@ struct ChatModelEditView: View {
                             openAICompatible
                         case .googleAI:
                             googleAI
+                        case .ollama:
+                            ollama
+                        case .claude:
+                            claude
                         }
                     }
                 }
@@ -66,6 +71,7 @@ struct ChatModelEditView: View {
             store.send(.appear)
         }
         .fixedSize(horizontal: false, vertical: true)
+        .handleToast(namespace: "ChatModelEdit")
     }
 
     var nameTextField: some View {
@@ -92,6 +98,10 @@ struct ChatModelEditView: View {
                             Text("OpenAI Compatible").tag(format)
                         case .googleAI:
                             Text("Google Generative AI").tag(format)
+                        case .ollama:
+                            Text("Ollama").tag(format)
+                        case .claude:
+                            Text("Claude").tag(format)
                         }
                     }
                 },
@@ -171,7 +181,7 @@ struct ChatModelEditView: View {
                 )
 
                 TextField(text: textFieldBinding) {
-                    Text("Max Tokens (Including Reply)")
+                    Text("Context Window")
                         .multilineTextAlignment(.trailing)
                 }
                 .overlay(alignment: .trailing) {
@@ -343,6 +353,83 @@ struct ChatModelEditView: View {
         }
 
         maxTokensTextField
+    }
+
+    @ViewBuilder
+    var ollama: some View {
+        baseURLTextField(prompt: Text("http://127.0.0.1:11434")) {
+            Text("/api/chat")
+        }
+
+        WithViewStore(
+            store,
+            removeDuplicates: { $0.modelName == $1.modelName }
+        ) { viewStore in
+            TextField("Model Name", text: viewStore.$modelName)
+        }
+
+        maxTokensTextField
+
+        WithViewStore(
+            store,
+            removeDuplicates: { $0.ollamaKeepAlive == $1.ollamaKeepAlive }
+        ) { viewStore in
+            TextField(text: viewStore.$ollamaKeepAlive, prompt: Text("Default Value")) {
+                Text("Keep Alive")
+            }
+        }
+
+        VStack(alignment: .leading, spacing: 8) {
+            Text(Image(systemName: "exclamationmark.triangle.fill")) + Text(
+                " For more details, please visit [https://ollama.com](https://ollama.com)."
+            )
+        }
+        .padding(.vertical)
+    }
+
+    @ViewBuilder
+    var claude: some View {
+        baseURLTextField(prompt: Text("https://api.anthropic.com")) {
+            Text("/v1/messages")
+        }
+        
+        apiKeyNamePicker
+
+        WithViewStore(
+            store,
+            removeDuplicates: { $0.modelName == $1.modelName }
+        ) { viewStore in
+            TextField("Model Name", text: viewStore.$modelName)
+                .overlay(alignment: .trailing) {
+                    Picker(
+                        "",
+                        selection: viewStore.$modelName,
+                        content: {
+                            if ClaudeChatCompletionsService
+                                .KnownModel(rawValue: viewStore.state.modelName) == nil
+                            {
+                                Text("Custom Model").tag(viewStore.state.modelName)
+                            }
+                            ForEach(
+                                ClaudeChatCompletionsService.KnownModel.allCases,
+                                id: \.self
+                            ) { model in
+                                Text(model.rawValue).tag(model.rawValue)
+                            }
+                        }
+                    )
+                    .frame(width: 20)
+                }
+        }
+        
+        maxTokensTextField
+
+        VStack(alignment: .leading, spacing: 8) {
+            Text(Image(systemName: "exclamationmark.triangle.fill")) + Text(
+                " For more details, please visit [https://anthropic.com](https://anthropic.com)."
+            )
+        }
+        .padding(.vertical)
     }
 }
 

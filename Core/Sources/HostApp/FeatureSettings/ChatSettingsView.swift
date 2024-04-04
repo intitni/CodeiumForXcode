@@ -290,10 +290,28 @@ struct ChatSettingsView: View {
                     },
                     description: "Experimental. Enable the bot to read the relevant code of the editing file in the project, third party packages and the SDK."
                 ) {
-                    WithFeatureEnabled(\.senseScopeInChat, alignment: .hidden) {
-                        Form {
-                            Toggle(isOn: $settings.enableSenseScopeByDefaultInChatContext) {
-                                Text("Enable by default")
+                    Form {
+                        Toggle(isOn: $settings.enableSenseScopeByDefaultInChatContext) {
+                            Text("Enable by default")
+                        }
+
+                        Picker(
+                            "Preferred Chat Model",
+                            selection: $settings.preferredChatModelIdForSenseScope
+                        ) {
+                            Text("Use the default model").tag("")
+
+                            if !settings.chatModels
+                                .contains(where: {
+                                    $0.id == settings.preferredChatModelIdForSenseScope
+                                }),
+                                !settings.preferredChatModelIdForSenseScope.isEmpty
+                            {
+                                Text(
+                                    (settings.chatModels.first?.name).map { "\($0) (Default)" }
+                                        ?? "No Model Found"
+                                )
+                                .tag(settings.preferredChatModelIdForSenseScope)
                             }
 
                             Picker(
@@ -329,10 +347,28 @@ struct ChatSettingsView: View {
                     },
                     description: "Experimental. Enable the bot to search code symbols in the project, third party packages and the SDK."
                 ) {
-                    WithFeatureEnabled(\.projectScopeInChat, alignment: .hidden) {
-                        Form {
-                            Toggle(isOn: $settings.enableProjectScopeByDefaultInChatContext) {
-                                Text("Enable by default")
+                    Form {
+                        Toggle(isOn: $settings.enableProjectScopeByDefaultInChatContext) {
+                            Text("Enable by default")
+                        }
+
+                        Picker(
+                            "Preferred Chat Model",
+                            selection: $settings.preferredChatModelIdForProjectScope
+                        ) {
+                            Text("Use the default model").tag("")
+
+                            if !settings.chatModels
+                                .contains(where: {
+                                    $0.id == settings.preferredChatModelIdForProjectScope
+                                }),
+                                !settings.preferredChatModelIdForProjectScope.isEmpty
+                            {
+                                Text(
+                                    (settings.chatModels.first?.name).map { "\($0) (Default)" }
+                                        ?? "No Model Found"
+                                )
+                                .tag(settings.preferredChatModelIdForProjectScope)
                             }
 
                             Picker(
@@ -366,7 +402,7 @@ struct ChatSettingsView: View {
 
                 SubSection(
                     title: Text("Web Scope"),
-                    description: "Allow the bot to search on Bing or read a web page."
+                    description: "Allow the bot to search on Bing or read a web page. The current implementation requires function calling."
                 ) {
                     Form {
                         Toggle(isOn: $settings.enableWebScopeByDefaultInChatContext) {
@@ -377,7 +413,7 @@ struct ChatSettingsView: View {
                             "Preferred Chat Model",
                             selection: $settings.preferredChatModelIdForWebScope
                         ) {
-                            Text("None").tag("")
+                            Text("Use the default model").tag("")
 
                             if !settings.chatModels
                                 .contains(where: {

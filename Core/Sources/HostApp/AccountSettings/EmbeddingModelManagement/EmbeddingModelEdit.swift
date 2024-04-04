@@ -1,4 +1,5 @@
 import AIModel
+import Toast
 import ComposableArchitecture
 import Dependencies
 import Keychain
@@ -13,6 +14,7 @@ struct EmbeddingModelEdit: ReducerProtocol {
         @BindingState var format: EmbeddingModel.Format
         @BindingState var maxTokens: Int = 8191
         @BindingState var modelName: String = ""
+        @BindingState var ollamaKeepAlive: String = ""
         var apiKeyName: String { apiKeySelection.apiKeyName }
         var baseURL: String { baseURLSelection.baseURL }
         var isFullURL: Bool { baseURLSelection.isFullURL }
@@ -38,7 +40,12 @@ struct EmbeddingModelEdit: ReducerProtocol {
         case baseURLSelection(BaseURLSelection.Action)
     }
 
-    @Dependency(\.toast) var toast
+    var toast: (String, ToastType) -> Void {
+        @Dependency(\.namespacedToast) var toast
+        return {
+            toast($0, $1, "EmbeddingModelEdit")
+        }
+    }
     @Dependency(\.apiKeyKeychain) var keychain
 
     var body: some ReducerProtocol<State, Action> {
@@ -83,14 +90,13 @@ struct EmbeddingModelEdit: ReducerProtocol {
                 )
                 return .run { send in
                     do {
-                        let tokenUsage =
-                            try await EmbeddingService(
-                                configuration: UserPreferenceEmbeddingConfiguration()
-                                    .overriding {
-                                        $0.model = model
-                                    }
-                            ).embed(text: "Hello").usage.total_tokens
-                        await send(.testSucceeded("Used \(tokenUsage) tokens."))
+                        _ = try await EmbeddingService(
+                            configuration: UserPreferenceEmbeddingConfiguration()
+                                .overriding {
+                                    $0.model = model
+                                }
+                        ).embed(text: "Hello")
+                        await send(.testSucceeded("Succeeded!"))
                     } catch {
                         await send(.testFailed(error.localizedDescription))
                     }
@@ -155,6 +161,7 @@ extension EmbeddingModelEdit.State {
             format: model.format,
             maxTokens: model.info.maxTokens,
             modelName: model.info.modelName,
+            ollamaKeepAlive: model.info.ollamaInfo.keepAlive,
             apiKeySelection: .init(
                 apiKeyName: model.info.apiKeyName,
                 apiKeyManagement: .init(availableAPIKeyNames: [model.info.apiKeyName])
@@ -175,7 +182,8 @@ extension EmbeddingModel {
                 baseURL: state.baseURL.trimmingCharacters(in: .whitespacesAndNewlines),
                 isFullURL: state.isFullURL,
                 maxTokens: state.maxTokens,
-                modelName: state.modelName.trimmingCharacters(in: .whitespacesAndNewlines)
+                modelName: state.modelName.trimmingCharacters(in: .whitespacesAndNewlines),
+                ollamaInfo: .init(keepAlive: state.ollamaKeepAlive)
             )
         )
     }

@@ -18,7 +18,7 @@ public struct ChatPanel: View {
             Divider()
             ChatPanelInputArea(chat: chat)
         }
-        .background(.regularMaterial)
+        .background(.clear)
         .onAppear { chat.send(.appear) }
     }
 }
@@ -86,13 +86,23 @@ struct ChatPanelMessages: View {
                     }
                     .modify { view in
                         if #available(macOS 13.0, *) {
-                            view.listRowSeparator(.hidden).listSectionSeparator(.hidden)
+                            view
+                                .listRowSeparator(.hidden)
+                                .listSectionSeparator(.hidden)
                         } else {
                             view
                         }
                     }
                 }
                 .listStyle(.plain)
+                .listRowBackground(EmptyView())
+                .modify { view in
+                    if #available(macOS 13.0, *) {
+                        view.scrollContentBackground(.hidden)
+                    } else {
+                        view
+                    }
+                }
                 .coordinateSpace(name: scrollSpace)
                 .preference(
                     key: ListHeightPreferenceKey.self,
@@ -218,7 +228,10 @@ struct ChatPanelMessages: View {
                             if isInitialLoad {
                                 isInitialLoad = false
                             }
-                            scrollToBottom()
+                            Task {
+                                await Task.yield()
+                                scrollToBottom()
+                            }
                         }
                     }
             }
@@ -258,7 +271,7 @@ struct ChatHistory: View {
                         trailing: -8
                     ))
                     .padding(.vertical, 4)
-                case .function:
+                case .tool:
                     FunctionMessage(id: message.id, text: text)
                 case .ignored:
                     EmptyView()
@@ -453,7 +466,7 @@ struct ChatPanel_Preview: PreviewProvider {
         ),
         .init(
             id: "6",
-            role: .function,
+            role: .tool,
             text: """
             Searching for something...
             - abc
