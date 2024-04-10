@@ -75,7 +75,7 @@ If you encounter an alert requesting permission that you have previously granted
 
 The extension will work better if you use key bindings.
 
-It looks like there is no way to add default key bindings to commands, but you can set them up in `Xcode settings > Key Bindings`. You can filter the list by typing `copilot` in the search bar.
+It looks like there is no way to add default key bindings to commands, but you can set them up in `Xcode settings > Key Bindings`. You can filter the list by typing `codeium` in the search bar.
 
 A [recommended setup](https://github.com/intitni/CopilotForXcode/issues/14) that should cause no conflict is
 
