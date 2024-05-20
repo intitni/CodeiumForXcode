@@ -1,7 +1,7 @@
 import Foundation
 
 let bundleIdentifierBase = Bundle(url: Bundle.main.bundleURL.appendingPathComponent(
-    "CopilotForXcodeExtensionService.app"
+    "CodeiumForXcodeExtensionService.app"
 ))?.object(forInfoDictionaryKey: "BUNDLE_IDENTIFIER_BASE") as? String ?? "com.intii.CopilotForXcode"
 
 let serviceIdentifier = bundleIdentifierBase + ".CommunicationBridge"
