@@ -19,6 +19,15 @@
       }
     },
     {
+      "identity" : "copilotforxcodekit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/intitni/CopilotForXcodeKit",
+      "state" : {
+        "revision" : "a3974f009d2421b9316a15adb0d83c930d13ab4a",
+        "version" : "0.6.0"
+      }
+    },
+    {
       "identity" : "fseventswrapper",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Frizlab/FSEventsWrapper",
@@ -30,10 +39,10 @@
     {
       "identity" : "generative-ai-swift",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/google/generative-ai-swift",
+      "location" : "https://github.com/intitni/generative-ai-swift",
       "state" : {
-        "revision" : "e2cebcd90645a3a94c0c823696e510a176bc384a",
-        "version" : "0.4.8"
+        "branch" : "support-setting-base-url",
+        "revision" : "9a4cbef27d3f2084c453f6bc1bcafc210214d077"
       }
     },
     {
@@ -50,8 +59,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/intitni/Highlightr",
       "state" : {
-        "branch" : "bump-highlight-js-version",
-        "revision" : "4ffbb1b0b721378263297cafea6f2838044eb1eb"
+        "branch" : "master",
+        "revision" : "81d8c8b3733939bf5d9e52cd6318f944cc033bd2"
       }
     },
     {
@@ -149,8 +158,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-async-algorithms",
       "state" : {
-        "revision" : "9cfed92b026c524674ed869a4ff2dcfdeedf8a2a",
-        "version" : "0.1.0"
+        "revision" : "da4e36f86544cdf733a40d59b3a2267e3a7bbf36",
+        "version" : "1.0.0"
       }
     },
     {

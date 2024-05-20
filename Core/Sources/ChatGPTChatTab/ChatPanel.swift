@@ -45,9 +45,12 @@ struct ChatPanelMessages: View {
     @State var isScrollToBottomButtonDisplayed = true
     @State var isPinnedToBottom = true
     @Namespace var bottomID
+    @Namespace var topID
     @Namespace var scrollSpace
     @State var scrollOffset: Double = 0
     @State var listHeight: Double = 0
+    @State var didScrollToBottomOnAppearOnce = false
+    @State var isBottomHidden = true
     @Environment(\.isEnabled) var isEnabled
 
     var body: some View {
@@ -56,6 +59,7 @@ struct ChatPanelMessages: View {
                 List {
                     Group {
                         Spacer(minLength: 12)
+                            .id(topID)
 
                         Instruction(chat: chat)
 
@@ -71,10 +75,14 @@ struct ChatPanelMessages: View {
                         Spacer(minLength: 12)
                             .id(bottomID)
                             .onAppear {
-                                proxy.scrollTo(bottomID, anchor: .bottom)
+                                isBottomHidden = false
+                                if !didScrollToBottomOnAppearOnce {
+                                    proxy.scrollTo(bottomID, anchor: .bottom)
+                                    didScrollToBottomOnAppearOnce = true
+                                }
                             }
-                            .task {
-                                proxy.scrollTo(bottomID, anchor: .bottom)
+                            .onDisappear {
+                                isBottomHidden = true
                             }
                             .background(GeometryReader { geo in
                                 let offset = geo.frame(in: .named(scrollSpace)).minY
@@ -129,9 +137,19 @@ struct ChatPanelMessages: View {
                     scrollToBottomButton(proxy: proxy)
                 }
                 .background {
-                    PinToBottomHandler(chat: chat, pinnedToBottom: $isPinnedToBottom) {
+                    PinToBottomHandler(
+                        chat: chat,
+                        isBottomHidden: isBottomHidden,
+                        pinnedToBottom: $isPinnedToBottom
+                    ) {
                         proxy.scrollTo(bottomID, anchor: .bottom)
                     }
+                }
+                .onAppear {
+                    proxy.scrollTo(bottomID, anchor: .bottom)
+                }
+                .task {
+                    proxy.scrollTo(bottomID, anchor: .bottom)
                 }
             }
         }
@@ -199,6 +217,7 @@ struct ChatPanelMessages: View {
 
     struct PinToBottomHandler: View {
         let chat: StoreOf<Chat>
+        let isBottomHidden: Bool
         @Binding var pinnedToBottom: Bool
         let scrollToBottom: () -> Void
 
@@ -219,8 +238,13 @@ struct ChatPanelMessages: View {
                 EmptyView()
                     .onChange(of: viewStore.state.isReceivingMessage) { isReceiving in
                         if isReceiving {
-                            pinnedToBottom = true
-                            scrollToBottom()
+                            Task {
+                                pinnedToBottom = true
+                                await Task.yield()
+                                withAnimation(.easeInOut(duration: 0.1)) {
+                                    scrollToBottom()
+                                }
+                            }
                         }
                     }
                     .onChange(of: viewStore.state.lastMessage) { _ in
@@ -230,8 +254,16 @@ struct ChatPanelMessages: View {
                             }
                             Task {
                                 await Task.yield()
-                                scrollToBottom()
+                                withAnimation(.easeInOut(duration: 0.1)) {
+                                    scrollToBottom()
+                                }
                             }
+                        }
+                    }
+                    .onChange(of: isBottomHidden) { value in
+                        // This is important to prevent it from jumping to the top!
+                        if value, pinnedToBottom {
+                            scrollToBottom()
                         }
                     }
             }
@@ -245,38 +277,47 @@ struct ChatHistory: View {
     var body: some View {
         WithViewStore(chat, observe: \.history) { viewStore in
             ForEach(viewStore.state, id: \.id) { message in
-                let text = message.text
-
-                switch message.role {
-                case .user:
-                    UserMessage(id: message.id, text: text, chat: chat)
-                        .listRowInsets(EdgeInsets(
-                            top: 0,
-                            leading: -8,
-                            bottom: 0,
-                            trailing: -8
-                        ))
-                        .padding(.vertical, 4)
-                case .assistant:
-                    BotMessage(
-                        id: message.id,
-                        text: text,
-                        references: message.references,
-                        chat: chat
-                    )
-                    .listRowInsets(EdgeInsets(
-                        top: 0,
-                        leading: -8,
-                        bottom: 0,
-                        trailing: -8
-                    ))
-                    .padding(.vertical, 4)
-                case .tool:
-                    FunctionMessage(id: message.id, text: text)
-                case .ignored:
-                    EmptyView()
-                }
+                ChatHistoryItem(chat: chat, message: message).id(message.id)
             }
+        }
+    }
+}
+
+struct ChatHistoryItem: View {
+    let chat: StoreOf<Chat>
+    let message: DisplayedChatMessage
+
+    var body: some View {
+        let text = message.text
+
+        switch message.role {
+        case .user:
+            UserMessage(id: message.id, text: text, chat: chat)
+                .listRowInsets(EdgeInsets(
+                    top: 0,
+                    leading: -8,
+                    bottom: 0,
+                    trailing: -8
+                ))
+                .padding(.vertical, 4)
+        case .assistant:
+            BotMessage(
+                id: message.id,
+                text: text,
+                references: message.references,
+                chat: chat
+            )
+            .listRowInsets(EdgeInsets(
+                top: 0,
+                leading: -8,
+                bottom: 0,
+                trailing: -8
+            ))
+            .padding(.vertical, 4)
+        case .tool:
+            FunctionMessage(id: message.id, text: text)
+        case .ignored:
+            EmptyView()
         }
     }
 }
@@ -528,26 +569,6 @@ struct ChatPanel_EmptyChat_Preview: PreviewProvider {
         .padding()
         .frame(width: 450, height: 600)
         .colorScheme(.dark)
-    }
-}
-
-struct ChatCodeSyntaxHighlighter: CodeSyntaxHighlighter {
-    let brightMode: Bool
-    let fontSize: Double
-
-    init(brightMode: Bool, fontSize: Double) {
-        self.brightMode = brightMode
-        self.fontSize = fontSize
-    }
-
-    func highlightCode(_ content: String, language: String?) -> Text {
-        let content = highlightedCodeBlock(
-            code: content,
-            language: language ?? "",
-            brightMode: brightMode,
-            fontSize: fontSize
-        )
-        return Text(AttributedString(content))
     }
 }
 

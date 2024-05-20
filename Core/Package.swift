@@ -62,7 +62,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../Tool"),
-        .package(url: "https://github.com/apple/swift-async-algorithms", from: "0.1.0"),
+        .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0"),
         .package(url: "https://github.com/gonzalezreal/swift-markdown-ui", from: "2.1.0"),
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.0.0"),
         .package(url: "https://github.com/pointfreeco/swift-parsing", from: "0.12.1"),
@@ -86,7 +86,9 @@ let package = Package(
                 .product(name: "SuggestionModel", package: "Tool"),
                 .product(name: "Logger", package: "Tool"),
                 .product(name: "Preferences", package: "Tool"),
-            ]
+            ].pro([
+                "ProClient",
+            ])
         ),
         .target(
             name: "Service",
@@ -230,6 +232,7 @@ let package = Package(
                 .product(name: "Logger", package: "Tool"),
                 .product(name: "ChatTab", package: "Tool"),
                 .product(name: "Terminal", package: "Tool"),
+                .product(name: "DebounceFunction", package: "Tool"),
                 .product(name: "MarkdownUI", package: "swift-markdown-ui"),
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
             ]

@@ -93,9 +93,9 @@ public struct UserDefaultPreferenceKeys {
         defaultValue: false,
         key: "ShowHideWidgetShortcutGlobally"
     )
-    
+
     // MARK: Update Channel
-    
+
     public let installBetaBuilds = PreferenceKey(
         defaultValue: false,
         key: "InstallBetaBuilds"
@@ -163,7 +163,7 @@ public extension UserDefaultPreferenceKeys {
     var gitHubCopilotProxyPort: PreferenceKey<String> {
         .init(defaultValue: "", key: "GitHubCopilotProxyPort")
     }
-    
+
     var gitHubCopilotEnterpriseURI: PreferenceKey<String> {
         .init(defaultValue: "", key: "GitHubCopilotEnterpriseURI")
     }
@@ -186,10 +186,6 @@ public extension UserDefaultPreferenceKeys {
 
     var runNodeWith: PreferenceKey<NodeRunner> {
         .init(defaultValue: .env, key: "RunNodeWith")
-    }
-
-    var gitHubCopilotIgnoreTrailingNewLines: PreferenceKey<Bool> {
-        .init(defaultValue: true, key: "GitHubCopilotIgnoreTrailingNewLines")
     }
 }
 
@@ -290,17 +286,21 @@ public extension UserDefaultPreferenceKeys {
     var promptToCodeEmbeddingModelId: PreferenceKey<String> {
         .init(defaultValue: "", key: "PromptToCodeEmbeddingModelId")
     }
-    
+
     var enableSenseScopeByDefaultInPromptToCode: PreferenceKey<Bool> {
         .init(defaultValue: false, key: "EnableSenseScopeByDefaultInPromptToCode")
     }
-    
+
     var promptToCodeCodeFontSize: PreferenceKey<Double> {
         .init(defaultValue: 13, key: "PromptToCodeCodeFontSize")
     }
-    
+
     var hideCommonPrecedingSpacesInPromptToCode: PreferenceKey<Bool> {
         .init(defaultValue: true, key: "HideCommonPrecedingSpacesInPromptToCode")
+    }
+    
+    var wrapCodeInPromptToCode: PreferenceKey<Bool> {
+        .init(defaultValue: true, key: "WrapCodeInPromptToCode")
     }
 }
 
@@ -310,7 +310,7 @@ public extension UserDefaultPreferenceKeys {
     var oldSuggestionFeatureProvider: DeprecatedPreferenceKey<BuiltInSuggestionFeatureProvider> {
         .init(defaultValue: .gitHubCopilot, key: "SuggestionFeatureProvider")
     }
-    
+
     var suggestionFeatureProvider: PreferenceKey<SuggestionFeatureProvider> {
         .init(defaultValue: .builtIn(.gitHubCopilot), key: "NewSuggestionFeatureProvider")
     }
@@ -354,13 +354,17 @@ public extension UserDefaultPreferenceKeys {
     var acceptSuggestionWithTab: PreferenceKey<Bool> {
         .init(defaultValue: true, key: "AcceptSuggestionWithTab")
     }
-    
+
     var dismissSuggestionWithEsc: PreferenceKey<Bool> {
         .init(defaultValue: true, key: "DismissSuggestionWithEsc")
     }
-    
+
     var isSuggestionSenseEnabled: PreferenceKey<Bool> {
         .init(defaultValue: false, key: "IsSuggestionSenseEnabled")
+    }
+    
+    var isSuggestionTypeInTheMiddleEnabled: PreferenceKey<Bool> {
+        .init(defaultValue: true, key: "IsSuggestionTypeInTheMiddleEnabled")
     }
 }
 
@@ -449,17 +453,85 @@ public extension UserDefaultPreferenceKeys {
     var enableWebScopeByDefaultInChatContext: PreferenceKey<Bool> {
         .init(defaultValue: false, key: "EnableWebScopeByDefaultInChatContext")
     }
-    
+
     var preferredChatModelIdForSenseScope: PreferenceKey<String> {
         .init(defaultValue: "", key: "PreferredChatModelIdForSenseScope")
     }
-    
+
     var preferredChatModelIdForProjectScope: PreferenceKey<String> {
         .init(defaultValue: "", key: "PreferredChatModelIdForProjectScope")
     }
-    
+
     var preferredChatModelIdForWebScope: PreferenceKey<String> {
         .init(defaultValue: "", key: "PreferredChatModelIdForWebScope")
+    }
+    
+    var disableFloatOnTopWhenTheChatPanelIsDetached: PreferenceKey<Bool> {
+        .init(defaultValue: true, key: "DisableFloatOnTopWhenTheChatPanelIsDetached")
+    }
+    
+    var keepFloatOnTopIfChatPanelAndXcodeOverlaps: PreferenceKey<Bool> {
+        .init(defaultValue: true, key: "KeepFloatOnTopIfChatPanelAndXcodeOverlaps")
+    }
+}
+
+// MARK: - Theme
+
+public extension UserDefaultPreferenceKeys {
+    var syncSuggestionHighlightTheme: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "SyncSuggestionHighlightTheme")
+    }
+
+    var syncPromptToCodeHighlightTheme: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "SyncPromptToCodeHighlightTheme")
+    }
+
+    var syncChatCodeHighlightTheme: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "SyncChatCodeHighlightTheme")
+    }
+
+    var codeForegroundColorLight: PreferenceKey<UserDefaultsStorageBox<StorableColor?>> {
+        .init(defaultValue: .init(nil), key: "CodeForegroundColorLight")
+    }
+
+    var codeForegroundColorDark: PreferenceKey<UserDefaultsStorageBox<StorableColor?>> {
+        .init(defaultValue: .init(nil), key: "CodeForegroundColorDark")
+    }
+
+    var codeBackgroundColorLight: PreferenceKey<UserDefaultsStorageBox<StorableColor?>> {
+        .init(defaultValue: .init(nil), key: "CodeBackgroundColorLight")
+    }
+
+    var codeBackgroundColorDark: PreferenceKey<UserDefaultsStorageBox<StorableColor?>> {
+        .init(defaultValue: .init(nil), key: "CodeBackgroundColorDark")
+    }
+
+    var suggestionCodeFont: PreferenceKey<UserDefaultsStorageBox<StorableFont>> {
+        .init(
+            defaultValue: .init(.init(nsFont: .monospacedSystemFont(ofSize: 12, weight: .regular))),
+            key: "SuggestionCodeFont"
+        )
+    }
+
+    var promptToCodeCodeFont: PreferenceKey<UserDefaultsStorageBox<StorableFont>> {
+        .init(
+            defaultValue: .init(.init(nsFont: .monospacedSystemFont(ofSize: 12, weight: .regular))),
+            key: "PromptToCodeCodeFont"
+        )
+    }
+
+    var chatCodeFont: PreferenceKey<UserDefaultsStorageBox<StorableFont>> {
+        .init(
+            defaultValue: .init(.init(nsFont: .monospacedSystemFont(ofSize: 12, weight: .regular))),
+            key: "ChatCodeFont"
+        )
+    }
+    
+    var terminalFont: PreferenceKey<UserDefaultsStorageBox<StorableFont>> {
+        .init(
+            defaultValue: .init(.init(nsFont: .monospacedSystemFont(ofSize: 12, weight: .regular))),
+            key: "TerminalCodeFont"
+        )
     }
 }
 
@@ -535,7 +607,7 @@ public extension UserDefaultPreferenceKeys {
     }
 
     var useCustomScrollViewWorkaround: FeatureFlag {
-        .init(defaultValue: true, key: "FeatureFlag-UseCustomScrollViewWorkaround")
+        .init(defaultValue: false, key: "FeatureFlag-UseCustomScrollViewWorkaround")
     }
 
     var triggerActionWithAccessibilityAPI: FeatureFlag {
@@ -576,11 +648,11 @@ public extension UserDefaultPreferenceKeys {
             key: "FeatureFlag-DisableGitHubCopilotSettingsAutoRefreshOnAppear"
         )
     }
-    
+
     var disableGitIgnoreCheck: FeatureFlag {
         .init(defaultValue: false, key: "FeatureFlag-DisableGitIgnoreCheck")
     }
-    
+
     var disableFileContentManipulationByCheatsheet: FeatureFlag {
         .init(defaultValue: true, key: "FeatureFlag-DisableFileContentManipulationByCheatsheet")
     }
@@ -591,30 +663,34 @@ public extension UserDefaultPreferenceKeys {
             key: "FeatureFlag-DisableEnhancedWorkspace"
         )
     }
-    
+
     var restartXcodeInspectorIfAccessibilityAPIIsMalfunctioning: FeatureFlag {
         .init(
             defaultValue: false,
             key: "FeatureFlag-RestartXcodeInspectorIfAccessibilityAPIIsMalfunctioning"
         )
     }
-    
+
     var restartXcodeInspectorIfAccessibilityAPIIsMalfunctioningNoTimer: FeatureFlag {
         .init(
             defaultValue: true,
             key: "FeatureFlag-RestartXcodeInspectorIfAccessibilityAPIIsMalfunctioningNoTimer"
         )
     }
-    
+
     var toastForTheReasonWhyXcodeInspectorNeedsToBeRestarted: FeatureFlag {
         .init(
             defaultValue: false,
             key: "FeatureFlag-ToastForTheReasonWhyXcodeInspectorNeedsToBeRestarted"
         )
     }
-    
+
     var observeToAXNotificationWithDefaultMode: FeatureFlag {
         .init(defaultValue: false, key: "FeatureFlag-observeToAXNotificationWithDefaultMode")
+    }
+
+    var useCloudflareDomainNameForLicenseCheck: FeatureFlag {
+        .init(defaultValue: false, key: "FeatureFlag-UseCloudflareDomainNameForLicenseCheck")
     }
 }
 

@@ -4,16 +4,14 @@ struct FeatureSettingsView: View {
     @State var tag = 0
 
     var body: some View {
-        SidebarTabView(tag: $tag) { 
-            ScrollView {
-                SuggestionSettingsView().padding()
-            }
-            .sidebarItem(
-                tag: 0,
-                title: "Suggestion",
-                subtitle: "Generate suggestions for your code",
-                image: "lightbulb"
-            )
+        SidebarTabView(tag: $tag) {
+            SuggestionSettingsView()
+                .sidebarItem(
+                    tag: 0,
+                    title: "Suggestion",
+                    subtitle: "Generate suggestions for your code",
+                    image: "lightbulb"
+                )
 
 //            ScrollView {
 //                ChatSettingsView().padding()

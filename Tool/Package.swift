@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "Logger", targets: ["Logger"]),
         .library(name: "OpenAIService", targets: ["OpenAIService"]),
         .library(name: "ChatTab", targets: ["ChatTab"]),
+        .library(name: "FileSystem", targets: ["FileSystem"]),
         .library(
             name: "ChatContextCollector",
             targets: ["ChatContextCollector", "ActiveDocumentChatContextCollector"]
@@ -52,12 +53,12 @@ let package = Package(
         // TODO: Update LanguageClient some day.
         .package(url: "https://github.com/ChimeHQ/LanguageClient", exact: "0.3.1"),
         .package(url: "https://github.com/ChimeHQ/LanguageServerProtocol", exact: "0.8.0"),
-        .package(url: "https://github.com/apple/swift-async-algorithms", from: "0.1.0"),
+        .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0"),
         .package(url: "https://github.com/pointfreeco/swift-parsing", from: "0.12.1"),
         .package(url: "https://github.com/ChimeHQ/JSONRPC", exact: "0.6.0"),
         .package(url: "https://github.com/scinfu/SwiftSoup.git", from: "2.6.0"),
         .package(url: "https://github.com/unum-cloud/usearch", from: "0.19.1"),
-        .package(url: "https://github.com/intitni/Highlightr", branch: "bump-highlight-js-version"),
+        .package(url: "https://github.com/intitni/Highlightr", branch: "master"),
         .package(
             url: "https://github.com/pointfreeco/swift-composable-architecture",
             from: "0.55.0"
@@ -65,7 +66,12 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-syntax.git", exact: "509.0.2"),
         .package(url: "https://github.com/GottaGetSwifty/CodableWrappers", from: "2.0.7"),
         .package(url: "https://github.com/krzyzanowskim/STTextView", from: "0.8.21"),
-        .package(url: "https://github.com/google/generative-ai-swift", from: "0.4.4"),
+        // A fork of https://github.com/google/generative-ai-swift to support setting base url.
+        .package(
+            url: "https://github.com/intitni/generative-ai-swift",
+            branch: "support-setting-base-url"
+        ),
+        .package(url: "https://github.com/intitni/CopilotForXcodeKit", from: "0.4.0"),
 
         // TreeSitter
         .package(url: "https://github.com/intitni/SwiftTreeSitter.git", branch: "main"),
@@ -74,7 +80,7 @@ let package = Package(
     targets: [
         // MARK: - Helpers
 
-        .target(name: "XPCShared", dependencies: ["SuggestionModel"]),
+        .target(name: "XPCShared", dependencies: ["SuggestionModel", "Logger"]),
 
         .target(name: "Configs"),
 
@@ -84,12 +90,14 @@ let package = Package(
 
         .target(name: "Logger"),
 
+        .target(name: "FileSystem"),
+
         .target(name: "ObjectiveCExceptionHandling"),
 
         .target(
             name: "CustomAsyncAlgorithms",
             dependencies: [
-                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms")
+                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
             ]
         ),
 
@@ -148,6 +156,7 @@ let package = Package(
             dependencies: [
                 "LanguageClient",
                 .product(name: "Parsing", package: "swift-parsing"),
+                .product(name: "CodableWrappers", package: "CodableWrappers"),
             ]
         ),
 
@@ -279,7 +288,10 @@ let package = Package(
             "GitHubCopilotService",
             "CodeiumService",
             "UserDefaultsObserver",
+            .product(name: "CopilotForXcodeKit", package: "CopilotForXcodeKit"),
         ]),
+
+        .testTarget(name: "SuggestionProviderTests", dependencies: ["SuggestionProvider"]),
 
         // MARK: - GitHub Copilot
 

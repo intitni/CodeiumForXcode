@@ -3,6 +3,10 @@ import Foundation
 import Preferences
 import XcodeKit
 
+#if canImport(PreferencesPlus)
+import PreferencesPlus
+#endif
+
 class SourceEditorExtension: NSObject, XCSourceEditorExtension {
     var builtin: [[XCSourceEditorCommandDefinitionKey: Any]] {
         [
@@ -15,6 +19,18 @@ class SourceEditorExtension: NSObject, XCSourceEditorExtension {
             // AcceptPromptToCodeCommand(),
             // ChatWithSelectionCommand(),
         ].map(makeCommandDefinition)
+    }
+    
+    var optional: [[XCSourceEditorCommandDefinitionKey: Any]] {
+        var all = [[XCSourceEditorCommandDefinitionKey: Any]]()
+        
+        #if canImport(PreferencesPlus)
+        if UserDefaults.shared.value(for: \.enableCloseIdleTabCommandInXcodeMenu) {
+            all.append(CloseIdleTabsCommand().makeCommandDefinition())
+        }
+        #endif
+        
+        return all
     }
     
     var internalUse: [[XCSourceEditorCommandDefinitionKey: Any]] {

@@ -4,11 +4,22 @@ import Preferences
 import SuggestionModel
 
 public actor GitHubCopilotSuggestionProvider: SuggestionServiceProvider {
+    public nonisolated var configuration: SuggestionServiceConfiguration {
+        .init(
+            acceptsRelevantCodeSnippets: true,
+            mixRelevantCodeSnippetsInSource: true, 
+            acceptsRelevantSnippetsFromOpenedFiles: false
+        )
+    }
+
     let projectRootURL: URL
     let onServiceLaunched: (SuggestionServiceProvider) -> Void
     var gitHubCopilotService: GitHubCopilotSuggestionServiceType?
 
-    public init(projectRootURL: URL, onServiceLaunched: @escaping (SuggestionServiceProvider) -> Void) {
+    public init(
+        projectRootURL: URL,
+        onServiceLaunched: @escaping (SuggestionServiceProvider) -> Void
+    ) {
         self.projectRootURL = projectRootURL
         self.onServiceLaunched = onServiceLaunched
     }
@@ -35,10 +46,7 @@ public extension GitHubCopilotSuggestionProvider {
             cursorPosition: request.cursorPosition,
             tabSize: request.tabSize,
             indentSize: request.indentSize,
-            usesTabsForIndentation: request.usesTabsForIndentation,
-            ignoreSpaceOnlySuggestions: request.ignoreSpaceOnlySuggestions,
-            ignoreTrailingNewLinesAndSpaces: UserDefaults.shared
-                .value(for: \.gitHubCopilotIgnoreTrailingNewLines)
+            usesTabsForIndentation: request.usesTabsForIndentation
         )
     }
 
