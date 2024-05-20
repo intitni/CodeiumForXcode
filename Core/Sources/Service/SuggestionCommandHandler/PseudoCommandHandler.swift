@@ -23,6 +23,7 @@ struct PseudoCommandHandler {
             lines: [],
             uti: "",
             cursorPosition: .outOfScope,
+            cursorOffset: -1,
             selections: [],
             tabSize: 0,
             indentSize: 0,
@@ -37,6 +38,7 @@ struct PseudoCommandHandler {
             lines: [],
             uti: "",
             cursorPosition: .outOfScope,
+            cursorOffset: -1,
             selections: [],
             tabSize: 0,
             indentSize: 0,
@@ -128,6 +130,7 @@ struct PseudoCommandHandler {
             lines: [],
             uti: "",
             cursorPosition: .outOfScope,
+            cursorOffset: -1,
             selections: [],
             tabSize: 0,
             indentSize: 0,
@@ -148,6 +151,7 @@ struct PseudoCommandHandler {
                     lines: [],
                     uti: "",
                     cursorPosition: .outOfScope,
+                    cursorOffset: -1,
                     selections: [],
                     tabSize: 0,
                     indentSize: 0,
@@ -206,7 +210,7 @@ struct PseudoCommandHandler {
             guard let focusElement = application.focusedElement,
                   focusElement.description == "Source Editor"
             else { return }
-            guard let (content, lines, _, cursorPosition) = await getFileContent(sourceEditor: nil)
+            guard let (content, lines, _, cursorPosition, cursorOffset) = await getFileContent(sourceEditor: nil)
             else {
                 PresentInWindowSuggestionPresenter()
                     .presentErrorMessage("Unable to get file content.")
@@ -219,6 +223,7 @@ struct PseudoCommandHandler {
                     lines: lines,
                     uti: "",
                     cursorPosition: cursorPosition,
+                    cursorOffset: cursorOffset,
                     selections: [],
                     tabSize: 0,
                     indentSize: 0,
@@ -261,7 +266,7 @@ struct PseudoCommandHandler {
             guard let focusElement = application.focusedElement,
                   focusElement.description == "Source Editor"
             else { return }
-            guard let (content, lines, _, cursorPosition) = await getFileContent(sourceEditor: nil)
+            guard let (content, lines, _, cursorPosition, cursorOffset) = await getFileContent(sourceEditor: nil)
             else {
                 PresentInWindowSuggestionPresenter()
                     .presentErrorMessage("Unable to get file content.")
@@ -274,6 +279,7 @@ struct PseudoCommandHandler {
                     lines: lines,
                     uti: "",
                     cursorPosition: cursorPosition,
+                    cursorOffset: cursorOffset,
                     selections: [],
                     tabSize: 0,
                     indentSize: 0,
@@ -321,7 +327,7 @@ extension PseudoCommandHandler {
         // recover selection range
 
         if let selection = result.newSelection {
-            var range = convertCursorRangeToRange(selection, in: result.content)
+            var range = SourceEditor.convertCursorRangeToRange(selection, in: result.content)
             if let value = AXValueCreate(.cfRange, &range) {
                 AXUIElementSetAttributeValue(
                     focusElement,
@@ -361,7 +367,8 @@ extension PseudoCommandHandler {
             content: String,
             lines: [String],
             selections: [CursorRange],
-            cursorPosition: CursorPosition
+            cursorPosition: CursorPosition,
+            cursorOffset: Int
         )?
     {
         guard let xcode = ActiveApplicationMonitor.shared.activeXcode
@@ -373,8 +380,8 @@ extension PseudoCommandHandler {
         guard let selectionRange = focusElement.selectedTextRange else { return nil }
         let content = focusElement.value
         let split = content.breakLines(appendLineBreakToLastLine: false)
-        let range = convertRangeToCursorRange(selectionRange, in: content)
-        return (content, split, [range], range.start)
+        let range = SourceEditor.convertRangeToCursorRange(selectionRange, in: content)
+        return (content, split, [range], range.start, selectionRange.lowerBound)
     }
 
     func getFileURL() async -> URL? {
@@ -410,6 +417,7 @@ extension PseudoCommandHandler {
             lines: content.lines,
             uti: uti,
             cursorPosition: content.cursorPosition,
+            cursorOffset: content.cursorOffset,
             selections: content.selections.map {
                 .init(start: $0.start, end: $0.end)
             },
@@ -417,56 +425,6 @@ extension PseudoCommandHandler {
             indentSize: indentSize,
             usesTabsForIndentation: usesTabsForIndentation
         )
-    }
-
-    func convertCursorRangeToRange(
-        _ cursorRange: CursorRange,
-        in content: String
-    ) -> CFRange {
-        let lines = content.breakLines()
-        var countS = 0
-        var countE = 0
-        var range = CFRange(location: 0, length: 0)
-        for (i, line) in lines.enumerated() {
-            if i == cursorRange.start.line {
-                countS = countS + cursorRange.start.character
-                range.location = countS
-            }
-            if i == cursorRange.end.line {
-                countE = countE + cursorRange.end.character
-                range.length = max(countE - range.location, 0)
-                break
-            }
-            countS += line.count
-            countE += line.count
-        }
-        return range
-    }
-
-    func convertRangeToCursorRange(
-        _ range: ClosedRange<Int>,
-        in content: String
-    ) -> CursorRange {
-        let lines = content.breakLines()
-        guard !lines.isEmpty else { return CursorRange(start: .zero, end: .zero) }
-        var countS = 0
-        var countE = 0
-        var cursorRange = CursorRange(start: .zero, end: .outOfScope)
-        for (i, line) in lines.enumerated() {
-            if countS <= range.lowerBound, range.lowerBound < countS + line.count {
-                cursorRange.start = .init(line: i, character: range.lowerBound - countS)
-            }
-            if countE <= range.upperBound, range.upperBound < countE + line.count {
-                cursorRange.end = .init(line: i, character: range.upperBound - countE)
-                break
-            }
-            countS += line.count
-            countE += line.count
-        }
-        if cursorRange.end == .outOfScope {
-            cursorRange.end = .init(line: lines.endIndex - 1, character: lines.last?.count ?? 0)
-        }
-        return cursorRange
     }
 }
 

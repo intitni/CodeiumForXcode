@@ -1,4 +1,5 @@
 import AIModel
+import AppKit
 import Configs
 import Foundation
 
@@ -28,6 +29,27 @@ public extension UserDefaults {
         shared.setupDefaultValue(
             for: \.promptToCodeCodeFontSize,
             defaultValue: shared.value(for: \.suggestionCodeFontSize)
+        )
+        shared.setupDefaultValue(
+            for: \.suggestionCodeFont,
+            defaultValue: .init(.init(nsFont: .monospacedSystemFont(
+                ofSize: shared.value(for: \.suggestionCodeFontSize),
+                weight: .regular
+            )))
+        )
+        shared.setupDefaultValue(
+            for: \.promptToCodeCodeFont,
+            defaultValue: .init(.init(nsFont: .monospacedSystemFont(
+                ofSize: shared.value(for: \.promptToCodeCodeFontSize),
+                weight: .regular
+            )))
+        )
+        shared.setupDefaultValue(
+            for: \.chatCodeFont,
+            defaultValue: .init(.init(nsFont: .monospacedSystemFont(
+                ofSize: shared.value(for: \.chatCodeFontSize),
+                weight: .regular
+            )))
         )
     }
 }
@@ -62,6 +84,34 @@ extension Array: RawRepresentable where Element: Codable {
         return result
     }
 }
+
+public struct UserDefaultsStorageBox<Element: Codable>: RawRepresentable {
+    public let value: Element
+
+    public init(_ value: Element) {
+        self.value = value
+    }
+
+    public init?(rawValue: String) {
+        guard let data = rawValue.data(using: .utf8),
+              let result = try? JSONDecoder().decode(Element.self, from: data)
+        else {
+            return nil
+        }
+        value = result
+    }
+
+    public var rawValue: String {
+        guard let data = try? JSONEncoder().encode(value),
+              let result = String(data: data, encoding: .utf8)
+        else {
+            return ""
+        }
+        return result
+    }
+}
+
+extension UserDefaultsStorageBox: Equatable where Element: Equatable {}
 
 public extension UserDefaultsType {
     // MARK: Normal Types
@@ -122,6 +172,16 @@ public extension UserDefaultsType {
         return K.Value(rawValue: rawValue) ?? key.defaultValue
     }
 
+    func value<K: UserDefaultPreferenceKey, V>(
+        for keyPath: KeyPath<UserDefaultPreferenceKeys, K>
+    ) -> V where K.Value == UserDefaultsStorageBox<V> {
+        let key = UserDefaultPreferenceKeys()[keyPath: keyPath]
+        guard let rawValue = value(forKey: key.key) as? String else {
+            return key.defaultValue.value
+        }
+        return (K.Value(rawValue: rawValue) ?? key.defaultValue).value
+    }
+
     func set<K: UserDefaultPreferenceKey>(
         _ value: K.Value,
         for keyPath: KeyPath<UserDefaultPreferenceKeys, K>
@@ -136,6 +196,14 @@ public extension UserDefaultsType {
     ) where K.Value: RawRepresentable, K.Value.RawValue == Int {
         let key = UserDefaultPreferenceKeys()[keyPath: keyPath]
         set(value.rawValue, forKey: key.key)
+    }
+
+    func set<K: UserDefaultPreferenceKey, V: Codable>(
+        _ value: V,
+        for keyPath: KeyPath<UserDefaultPreferenceKeys, K>
+    ) where K.Value == UserDefaultsStorageBox<V> {
+        let key = UserDefaultPreferenceKeys()[keyPath: keyPath]
+        set(UserDefaultsStorageBox(value).rawValue, forKey: key.key)
     }
 
     func setupDefaultValue<K: UserDefaultPreferenceKey>(

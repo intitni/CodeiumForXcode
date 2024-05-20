@@ -57,7 +57,7 @@ public extension Filespace {
             return false
         }
 
-        let editingLine = lines[cursorPosition.line].dropLast(1) // dropping \n
+        let editingLine = lines[cursorPosition.line].dropLast(1) // dropping line ending
         let suggestionLines = presentingSuggestion.text.split(whereSeparator: \.isNewline)
         let suggestionFirstLine = suggestionLines.first ?? ""
 
@@ -82,17 +82,19 @@ public extension Filespace {
                 "Generating suggestion with invalid range"
             )
 
-            let startIndex = editingLine.index(
-                editingLine.startIndex,
-                offsetBy: max(0, presentingSuggestion.range.start.character),
-                limitedBy: editingLine.endIndex
-            ) ?? editingLine.startIndex
+            let utf16View = editingLine.utf16
 
-            let endIndex = editingLine.index(
-                editingLine.startIndex,
+            let startIndex = utf16View.index(
+                utf16View.startIndex,
+                offsetBy: max(0, presentingSuggestion.range.start.character),
+                limitedBy: utf16View.endIndex
+            ) ?? utf16View.startIndex
+
+            let endIndex = utf16View.index(
+                utf16View.startIndex,
                 offsetBy: cursorPosition.character,
-                limitedBy: editingLine.endIndex
-            ) ?? editingLine.endIndex
+                limitedBy: utf16View.endIndex
+            ) ?? utf16View.endIndex
 
             if endIndex > startIndex {
                 return String(editingLine[startIndex..<endIndex])
@@ -100,6 +102,18 @@ public extension Filespace {
 
             return ""
         }()
+
+        /// if the line will not change after accepting the suggestion
+        if suggestionLines.count == 1 {
+            if editingLine.hasPrefix(suggestionFirstLine),
+               cursorPosition.character
+               >= suggestionFirstLine.utf16.count + presentingSuggestion.range.start.character
+            {
+                reset()
+                resetSnapshot()
+                return false
+            }
+        }
 
         // the line content doesn't match the suggestion
         if cursorPosition.character > 0,
@@ -118,7 +132,7 @@ public extension Filespace {
         }
 
         // undo to a state before the suggestion was generated
-        if editingLine.count < presentingSuggestion.position.character {
+        if editingLine.utf16.count < presentingSuggestion.position.character {
             reset()
             resetSnapshot()
             return false

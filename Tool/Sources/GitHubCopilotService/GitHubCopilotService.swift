@@ -22,9 +22,7 @@ public protocol GitHubCopilotSuggestionServiceType {
         cursorPosition: CursorPosition,
         tabSize: Int,
         indentSize: Int,
-        usesTabsForIndentation: Bool,
-        ignoreSpaceOnlySuggestions: Bool,
-        ignoreTrailingNewLinesAndSpaces: Bool
+        usesTabsForIndentation: Bool
     ) async throws -> [CodeSuggestion]
     func notifyAccepted(_ completion: CodeSuggestion) async
     func notifyRejected(_ completions: [CodeSuggestion]) async
@@ -43,11 +41,43 @@ protocol GitHubCopilotLSP {
 
 enum GitHubCopilotError: Error, LocalizedError {
     case languageServerNotInstalled
+    case languageServerError(ServerError)
 
     var errorDescription: String? {
         switch self {
         case .languageServerNotInstalled:
             return "Language server is not installed."
+        case let .languageServerError(error):
+            switch error {
+            case let .handlerUnavailable(handler):
+                return "Language server error: Handler \(handler) unavailable"
+            case let .unhandledMethod(method):
+                return "Language server error: Unhandled method \(method)"
+            case let .notificationDispatchFailed(error):
+                return "Language server error: Notification dispatch failed: \(error)"
+            case let .requestDispatchFailed(error):
+                return "Language server error: Request dispatch failed: \(error)"
+            case let .clientDataUnavailable(error):
+                return "Language server error: Client data unavailable: \(error)"
+            case .serverUnavailable:
+                return "Language server error: Server unavailable, please make sure that:\n1. The path to node is correctly set.\n2. The node is not a shim executable.\n3. the node version is high enough."
+            case .missingExpectedParameter:
+                return "Language server error: Missing expected parameter"
+            case .missingExpectedResult:
+                return "Language server error: Missing expected result"
+            case let .unableToDecodeRequest(error):
+                return "Language server error: Unable to decode request: \(error)"
+            case let .unableToSendRequest(error):
+                return "Language server error: Unable to send request: \(error)"
+            case let .unableToSendNotification(error):
+                return "Language server error: Unable to send notification: \(error)"
+            case let .serverError(code: code, message: message, data: data):
+                return "Language server error: Server error: \(code) \(message) \(String(describing: data))"
+            case .invalidRequest:
+                return "Language server error: Invalid request"
+            case .timeout:
+                return "Language server error: Timeout, please try again later"
+            }
         }
     }
 }
@@ -228,28 +258,58 @@ public final class GitHubCopilotAuthService: GitHubCopilotBaseService,
     }
 
     public func checkStatus() async throws -> GitHubCopilotAccountStatus {
-        try await server.sendRequest(GitHubCopilotRequest.CheckStatus()).status
+        do {
+            return try await server.sendRequest(GitHubCopilotRequest.CheckStatus()).status
+        } catch let error as ServerError {
+            throw GitHubCopilotError.languageServerError(error)
+        } catch {
+            throw error
+        }
     }
 
     public func signInInitiate() async throws -> (verificationUri: String, userCode: String) {
-        let result = try await server.sendRequest(GitHubCopilotRequest.SignInInitiate())
-        return (result.verificationUri, result.userCode)
+        do {
+            let result = try await server.sendRequest(GitHubCopilotRequest.SignInInitiate())
+            return (result.verificationUri, result.userCode)
+        } catch let error as ServerError {
+            throw GitHubCopilotError.languageServerError(error)
+        } catch {
+            throw error
+        }
     }
 
     public func signInConfirm(userCode: String) async throws
         -> (username: String, status: GitHubCopilotAccountStatus)
     {
-        let result = try await server
-            .sendRequest(GitHubCopilotRequest.SignInConfirm(userCode: userCode))
-        return (result.user, result.status)
+        do {
+            let result = try await server
+                .sendRequest(GitHubCopilotRequest.SignInConfirm(userCode: userCode))
+            return (result.user, result.status)
+        } catch let error as ServerError {
+            throw GitHubCopilotError.languageServerError(error)
+        } catch {
+            throw error
+        }
     }
 
     public func signOut() async throws -> GitHubCopilotAccountStatus {
-        try await server.sendRequest(GitHubCopilotRequest.SignOut()).status
+        do {
+            return try await server.sendRequest(GitHubCopilotRequest.SignOut()).status
+        } catch let error as ServerError {
+            throw GitHubCopilotError.languageServerError(error)
+        } catch {
+            throw error
+        }
     }
 
     public func version() async throws -> String {
-        try await server.sendRequest(GitHubCopilotRequest.GetVersion()).version
+        do {
+            return try await server.sendRequest(GitHubCopilotRequest.GetVersion()).version
+        } catch let error as ServerError {
+            throw GitHubCopilotError.languageServerError(error)
+        } catch {
+            throw error
+        }
     }
 }
 
@@ -278,9 +338,7 @@ public final class GitHubCopilotSuggestionService: GitHubCopilotBaseService,
         cursorPosition: CursorPosition,
         tabSize: Int,
         indentSize: Int,
-        usesTabsForIndentation: Bool,
-        ignoreSpaceOnlySuggestions: Bool,
-        ignoreTrailingNewLinesAndSpaces: Bool
+        usesTabsForIndentation: Bool
     ) async throws -> [CodeSuggestion] {
         let languageId = languageIdentifierFromFileURL(fileURL)
 
@@ -317,12 +375,6 @@ public final class GitHubCopilotSuggestionService: GitHubCopilotBaseService,
                     position: cursorPosition
                 )))
                 .completions
-                .filter { completion in
-                    if ignoreSpaceOnlySuggestions {
-                        return !completion.text.allSatisfy { $0.isWhitespace || $0.isNewline }
-                    }
-                    return true
-                }
                 .map {
                     let suggestion = CodeSuggestion(
                         id: $0.uuid,
@@ -330,15 +382,6 @@ public final class GitHubCopilotSuggestionService: GitHubCopilotBaseService,
                         position: $0.position,
                         range: $0.range
                     )
-                    if ignoreTrailingNewLinesAndSpaces {
-                        var updated = suggestion
-                        var text = updated.text[...]
-                        while let last = text.last, last.isNewline || last.isWhitespace {
-                            text = text.dropLast(1)
-                        }
-                        updated.text = String(text)
-                        return updated
-                    }
                     return suggestion
                 }
             try Task.checkCancellation()

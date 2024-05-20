@@ -46,14 +46,18 @@ extension View {
             .padding(.top, 14)
     }
 
-    func codeBlockStyle(_ configuration: CodeBlockConfiguration) -> some View {
-        background(Color(nsColor: .textBackgroundColor).opacity(0.7))
+    func codeBlockStyle(
+        _ configuration: CodeBlockConfiguration,
+        backgroundColor: Color,
+        labelColor: Color
+    ) -> some View {
+        background(backgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay(alignment: .top) {
                 HStack(alignment: .center) {
                     Text(configuration.language ?? "code")
-                        .foregroundStyle(.tertiary)
-                        .font(.callout)
+                        .foregroundStyle(labelColor)
+                        .font(.callout.bold())
                         .padding(.leading, 8)
                         .lineLimit(1)
                     Spacer()
@@ -63,115 +67,10 @@ extension View {
                     }
                 }
             }
+            .overlay {
+                RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.05), lineWidth: 1)
+            }
             .markdownMargin(top: 4, bottom: 16)
-    }
-}
-
-extension MarkdownUI.Theme {
-    static func custom(fontSize: Double) -> MarkdownUI.Theme {
-        .gitHub.text {
-            ForegroundColor(.primary)
-            BackgroundColor(Color.clear)
-            FontSize(fontSize)
-        }
-        .codeBlock { configuration in
-            let wrapCode = UserDefaults.shared.value(for: \.wrapCodeInChatCodeBlock)
-
-            if wrapCode {
-                configuration.label
-                    .codeBlockLabelStyle()
-                    .codeBlockStyle(configuration)
-            } else {
-                ScrollView(.horizontal) {
-                    configuration.label
-                        .codeBlockLabelStyle()
-                }
-                .workaroundForVerticalScrollingBugInMacOS()
-                .codeBlockStyle(configuration)
-            }
-        }
-    }
-
-    static func instruction(fontSize: Double) -> MarkdownUI.Theme {
-        .gitHub.text {
-            ForegroundColor(.primary)
-            BackgroundColor(Color.clear)
-            FontSize(fontSize)
-        }
-        .code {
-            FontFamilyVariant(.monospaced)
-            FontSize(.em(0.85))
-            BackgroundColor(Color.secondary.opacity(0.2))
-        }
-        .codeBlock { configuration in
-            let wrapCode = UserDefaults.shared.value(for: \.wrapCodeInChatCodeBlock)
-
-            if wrapCode {
-                configuration.label
-                    .codeBlockLabelStyle()
-                    .codeBlockStyle(configuration)
-            } else {
-                ScrollView(.horizontal) {
-                    configuration.label
-                        .codeBlockLabelStyle()
-                }
-                .workaroundForVerticalScrollingBugInMacOS()
-                .codeBlockStyle(configuration)
-            }
-        }
-        .table { configuration in
-            configuration.label
-                .fixedSize(horizontal: false, vertical: true)
-                .markdownTableBorderStyle(.init(
-                    color: .init(nsColor: .separatorColor),
-                    strokeStyle: .init(lineWidth: 1)
-                ))
-                .markdownTableBackgroundStyle(
-                    .alternatingRows(Color.secondary.opacity(0.1), Color.secondary.opacity(0.2))
-                )
-                .markdownMargin(top: 0, bottom: 16)
-        }
-        .tableCell { configuration in
-            configuration.label
-                .markdownTextStyle {
-                    if configuration.row == 0 {
-                        FontWeight(.semibold)
-                    }
-                    BackgroundColor(nil)
-                }
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.vertical, 6)
-                .padding(.horizontal, 13)
-                .relativeLineSpacing(.em(0.25))
-        }
-    }
-
-    static func functionCall(fontSize: Double) -> MarkdownUI.Theme {
-        .gitHub.text {
-            ForegroundColor(.secondary)
-            BackgroundColor(Color.clear)
-            FontSize(fontSize - 1)
-        }
-        .list { configuration in
-            configuration.label
-                .markdownMargin(top: 4, bottom: 4)
-        }
-        .paragraph { configuration in
-            configuration.label
-                .markdownMargin(top: 0, bottom: 4)
-        }
-        .codeBlock { configuration in
-            configuration.label
-                .relativeLineSpacing(.em(0.225))
-                .markdownTextStyle {
-                    FontFamilyVariant(.monospaced)
-                    FontSize(.em(0.85))
-                }
-                .padding(16)
-                .background(Color(nsColor: .textBackgroundColor).opacity(0.7))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .markdownMargin(top: 4, bottom: 4)
-        }
     }
 }
 

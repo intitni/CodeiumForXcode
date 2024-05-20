@@ -6,16 +6,15 @@ extension LaunchAgentManager {
         self.init(
             serviceIdentifier: Bundle.main
                 .object(forInfoDictionaryKey: "BUNDLE_IDENTIFIER_BASE") as! String +
-                ".ExtensionService",
+                ".CommunicationBridge",
             executablePath: Bundle.main.bundleURL
                 .appendingPathComponent("Contents")
                 .appendingPathComponent("Applications")
-                .appendingPathComponent(
-                    "CodeiumForXcodeExtensionService.app/Contents/MacOS/CodeiumForXcodeExtensionService"
-                )
+                .appendingPathComponent("CommunicationBridge")
                 .path,
             bundleIdentifier: Bundle.main
                 .object(forInfoDictionaryKey: "BUNDLE_IDENTIFIER_BASE") as! String
         )
     }
 }
+

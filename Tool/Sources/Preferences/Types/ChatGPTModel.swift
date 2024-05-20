@@ -3,14 +3,16 @@ import Foundation
 public enum ChatGPTModel: String {
     case gpt35Turbo = "gpt-3.5-turbo"
     case gpt35Turbo16k = "gpt-3.5-turbo-16k"
+    case gpt4o = "gpt-4o"
     case gpt4 = "gpt-4"
     case gpt432k = "gpt-4-32k"
-    case gpt4TurboPreview = "gpt-4-turbo-preview"
+    case gpt4Turbo = "gpt-4-turbo"
     case gpt40314 = "gpt-4-0314"
     case gpt40613 = "gpt-4-0613"
     case gpt41106Preview = "gpt-4-1106-preview"
     case gpt4VisionPreview = "gpt-4-vision-preview"
-    case gpt35Turbo0301 = "gpt-3.5-turbo-0301"
+    case gpt4TurboPreview = "gpt-4-turbo-preview"
+    case gpt4Turbo20240409 = "gpt-4-turbo-2024-04-09"
     case gpt35Turbo0613 = "gpt-3.5-turbo-0613"
     case gpt35Turbo1106 = "gpt-3.5-turbo-1106"
     case gpt35Turbo0125 = "gpt-3.5-turbo-0125"
@@ -32,9 +34,7 @@ public extension ChatGPTModel {
         case .gpt432k0314:
             return 32768
         case .gpt35Turbo:
-            return 4096
-        case .gpt35Turbo0301:
-            return 4096
+            return 16385
         case .gpt35Turbo0613:
             return 4096
         case .gpt35Turbo1106:
@@ -57,12 +57,18 @@ public extension ChatGPTModel {
             return 128000
         case .gpt40125:
             return 128000
+        case .gpt4Turbo:
+            return 128000
+        case .gpt4Turbo20240409:
+            return 128000
+        case .gpt4o:
+            return 128000
         }
     }
     
     var supportsImages: Bool {
         switch self {
-        case .gpt4VisionPreview:
+        case .gpt4VisionPreview, .gpt4Turbo, .gpt4Turbo20240409, .gpt4o:
             return true
         default:
             return false
