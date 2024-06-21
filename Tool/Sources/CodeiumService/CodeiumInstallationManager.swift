@@ -16,6 +16,14 @@ public struct CodeiumInstallationManager {
         return isEnterpriseMode && (self.enterprisePortalUrl != "") && (self.enterpriseVersion != "")
     }
     
+    public func getLatestSupportedVersion() -> String {
+        if isEnterprise() {
+            return enterpriseVersion;
+        }
+        
+        return Self.latestSupportedVersion;
+        
+    }
 
     public enum InstallationStatus {
         case notInstalled

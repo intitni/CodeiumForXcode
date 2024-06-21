@@ -193,12 +193,21 @@ public extension UserDefaultPreferenceKeys {
 
 public extension UserDefaultPreferenceKeys {
     var codeiumVerboseLog: PreferenceKey<Bool> {
-        .init(defaultValue: false, key: "CodeiumVerboseLog")
+        .init(defaultValue: true, key: "CodeiumVerboseLog")
     }
 
     var codeiumEnterpriseMode: PreferenceKey<Bool> {
         .init(defaultValue: false, key: "CodeiumEnterpriseMode")
     }
+    
+    var indexEnabled: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "indexEnabled")
+    }
+    
+    var indexingMaxFileSize: PreferenceKey<Int> {
+        .init(defaultValue: 5000, key: "indexingMaxFileSize")
+    }
+    
 
     var codeiumPortalUrl: PreferenceKey<String> {
         .init(defaultValue: "", key: "CodeiumPortalUrl")

@@ -67,13 +67,15 @@ struct DependencyUpdater {
                 }
                 
                 // Everytime on startup, access the latest version and update the value for the app
-                do {
-                    let enterpriseVersion = try await getVersion()
-                    UserDefaults.shared.set(enterpriseVersion, forKey: "CodeiumEnterpriseVersion")
-                } catch {
-                    Logger.service.error(
-                        "Error Fetching Enterprise Version from Portal URL"
-                    )
+                if UserDefaults.shared.value(for: \.codeiumEnterpriseMode) {
+                    do {
+                        let enterpriseVersion = try await getVersion()
+                        UserDefaults.shared.set(enterpriseVersion, forKey: "CodeiumEnterpriseVersion")
+                    } catch {
+                        Logger.service.error(
+                            "Error Fetching Enterprise Version from Portal URL"
+                        )
+                    }
                 }
                 
                 let codeium = CodeiumInstallationManager()
