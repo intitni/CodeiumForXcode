@@ -2,6 +2,7 @@ import Foundation
 import JSONRPC
 import LanguageServerProtocol
 import SuggestionModel
+import Logger
 
 protocol CodeiumRequestType {
     associatedtype Response: Codable
@@ -92,6 +93,38 @@ enum CodeiumRequest {
         func makeURLRequest(server: String) -> URLRequest {
             let data = (try? JSONEncoder().encode(requestBody)) ?? Data()
             return assembleURLRequest(server: server, method: "Heartbeat", body: data)
+        }
+    }
+    
+    struct AddTrackedWorkspace: CodeiumRequestType {
+        struct Response: Codable {}
+
+        struct RequestBody: Codable {
+            var workspace: String
+        }
+
+        var requestBody: RequestBody
+
+        func makeURLRequest(server: String) -> URLRequest {
+            Logger.codeium.info("Adding \(requestBody.workspace) for indexing")
+            let data = (try? JSONEncoder().encode(requestBody)) ?? Data()
+            return assembleURLRequest(server: server, method: "AddTrackedWorkspace", body: data)
+        }
+    }
+    
+    struct RemoveTrackedWorkspace: CodeiumRequestType {
+        struct Response: Codable {}
+
+        struct RequestBody: Codable {
+            var workspace: String
+        }
+
+        var requestBody: RequestBody
+
+        func makeURLRequest(server: String) -> URLRequest {
+            Logger.codeium.info("Removing \(requestBody.workspace) from indexing")
+            let data = (try? JSONEncoder().encode(requestBody)) ?? Data()
+            return assembleURLRequest(server: server, method: "RemoveTrackedWorkspace", body: data)
         }
     }
 }

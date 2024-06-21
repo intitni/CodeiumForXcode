@@ -15,6 +15,8 @@ public protocol CodeiumSuggestionServiceType {
         usesTabsForIndentation: Bool
     ) async throws -> [CodeSuggestion]
     func notifyAccepted(_ suggestion: CodeSuggestion) async
+    func addWorkspace(project_path: String) async
+    func removeWorkspace(project_path: String) async
     func notifyOpenTextDocument(fileURL: URL, content: String) async throws
     func notifyChangeTextDocument(fileURL: URL, content: String) async throws
     func notifyCloseTextDocument(fileURL: URL) async throws
@@ -44,6 +46,7 @@ public class CodeiumSuggestionService {
     let projectRootURL: URL
     var server: CodeiumLSP?
     var heartbeatTask: Task<Void, Error>?
+    var workspaceTask: Task<Void, Error>?
     var requestCounter: UInt64 = 0
     var cancellationCounter: UInt64 = 0
     let openedDocumentPool = OpenedDocumentPool()
@@ -55,7 +58,7 @@ public class CodeiumSuggestionService {
     let authService = CodeiumAuthService()
 
     var fallbackXcodeVersion = "14.0.0"
-    var languageServerVersion = CodeiumInstallationManager.latestSupportedVersion
+    var languageServerVersion = CodeiumInstallationManager().getLatestSupportedVersion();
 
     private var ongoingTasks = Set<Task<[CodeSuggestion], Error>>()
 
@@ -115,6 +118,7 @@ public class CodeiumSuggestionService {
         server.terminationHandler = { [weak self] in
             self?.server = nil
             self?.heartbeatTask?.cancel()
+            self?.workspaceTask?.cancel()
             self?.requestCounter = 0
             self?.cancellationCounter = 0
             Logger.codeium.info("Language server is terminated, will be restarted when needed.")
@@ -129,6 +133,14 @@ public class CodeiumSuggestionService {
                     _ = try? await self?.server?.sendRequest(
                         CodeiumRequest.Heartbeat(requestBody: .init(metadata: metadata))
                     )
+                    try await Task.sleep(nanoseconds: 5_000_000_000)
+                }
+            }
+            
+            self.workspaceTask = Task { [weak self] in
+                while true {
+                    try Task.checkCancellation()
+                    _ = await self?.server?.updateIndexing()
                     try await Task.sleep(nanoseconds: 5_000_000_000)
                 }
             }
@@ -308,6 +320,20 @@ extension CodeiumSuggestionService: CodeiumSuggestionServiceType {
             .sendRequest(CodeiumRequest.AcceptCompletion(requestBody: .init(
                 metadata: getMetadata(),
                 completion_id: suggestion.id
+            )))
+    }
+    
+    public func addWorkspace(project_path: String) async {
+        _ = try? await (try setupServerIfNeeded())
+            .sendRequest(CodeiumRequest.AddTrackedWorkspace(requestBody: .init(
+                workspace: project_path
+            )))
+    }
+    
+    public func removeWorkspace(project_path: String) async {
+        _ = try? await (try setupServerIfNeeded())
+            .sendRequest(CodeiumRequest.RemoveTrackedWorkspace(requestBody: .init(
+                workspace: project_path
             )))
     }
 

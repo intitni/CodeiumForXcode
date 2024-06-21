@@ -199,6 +199,15 @@ public extension UserDefaultPreferenceKeys {
     var codeiumEnterpriseMode: PreferenceKey<Bool> {
         .init(defaultValue: false, key: "CodeiumEnterpriseMode")
     }
+    
+    var indexEnabled: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "indexEnabled")
+    }
+    
+    var indexingMaxFileSize: PreferenceKey<Int> {
+        .init(defaultValue: 5000, key: "indexingMaxFileSize")
+    }
+    
 
     var codeiumPortalUrl: PreferenceKey<String> {
         .init(defaultValue: "", key: "CodeiumPortalUrl")
@@ -207,6 +216,11 @@ public extension UserDefaultPreferenceKeys {
     var codeiumApiUrl: PreferenceKey<String> {
         .init(defaultValue: "", key: "CodeiumApiUrl")
     }
+    
+    var codeiumEnterpriseVersion: PreferenceKey<String> {
+        .init(defaultValue: "", key: "CodeiumEnterpriseVersion")
+    }
+    
 }
 
 // MARK: - Chat Models
