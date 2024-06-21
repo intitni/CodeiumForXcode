@@ -193,7 +193,7 @@ public extension UserDefaultPreferenceKeys {
 
 public extension UserDefaultPreferenceKeys {
     var codeiumVerboseLog: PreferenceKey<Bool> {
-        .init(defaultValue: true, key: "CodeiumVerboseLog")
+        .init(defaultValue: false, key: "CodeiumVerboseLog")
     }
 
     var codeiumEnterpriseMode: PreferenceKey<Bool> {
