@@ -332,7 +332,7 @@ public extension UserDefaultPreferenceKeys {
     }
 
     var suggestionFeatureProvider: PreferenceKey<SuggestionFeatureProvider> {
-        .init(defaultValue: .builtIn(.gitHubCopilot), key: "NewSuggestionFeatureProvider")
+        .init(defaultValue: .builtIn(.codeium), key: "NewSuggestionFeatureProvider")
     }
 
     var realtimeSuggestionToggle: PreferenceKey<Bool> {

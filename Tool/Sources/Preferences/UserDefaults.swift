@@ -13,6 +13,7 @@ public extension UserDefaults {
 
     static func setupDefaultSettings() {
         shared.set(.codeiumChat, for: \.openChatMode)
+        shared.set(.builtIn(.codeium), for: \.suggestionFeatureProvider)
         
         shared.setupDefaultValue(for: \.quitXPCServiceOnXcodeAndAppQuit)
         shared.setupDefaultValue(for: \.realtimeSuggestionToggle)
