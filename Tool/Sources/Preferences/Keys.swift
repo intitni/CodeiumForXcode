@@ -187,6 +187,14 @@ public extension UserDefaultPreferenceKeys {
     var runNodeWith: PreferenceKey<NodeRunner> {
         .init(defaultValue: .env, key: "RunNodeWith")
     }
+
+    var gitHubCopilotLoadKeyChainCertificates: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "GitHubCopilotLoadKeyChainCertificates")
+    }
+
+    var gitHubCopilotPretendIDEToBeVSCode: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "GitHubCopilotPretendIDEToBeVSCode")
+    }
 }
 
 // MARK: - Codeium Settings
@@ -206,6 +214,18 @@ public extension UserDefaultPreferenceKeys {
 
     var codeiumApiUrl: PreferenceKey<String> {
         .init(defaultValue: "", key: "CodeiumApiUrl")
+    }
+
+    var codeiumEnterpriseVersion: PreferenceKey<String> {
+        .init(defaultValue: "", key: "CodeiumEnterpriseVersion")
+    }
+
+    var codeiumIndexEnabled: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "CodeiumIndexEnabled")
+    }
+
+    var codeiumIndexingMaxFileSize: PreferenceKey<Int> {
+        .init(defaultValue: 5000, key: "CodeiumIndexingMaxFileSize")
     }
 }
 
@@ -298,7 +318,7 @@ public extension UserDefaultPreferenceKeys {
     var hideCommonPrecedingSpacesInPromptToCode: PreferenceKey<Bool> {
         .init(defaultValue: true, key: "HideCommonPrecedingSpacesInPromptToCode")
     }
-    
+
     var wrapCodeInPromptToCode: PreferenceKey<Bool> {
         .init(defaultValue: true, key: "WrapCodeInPromptToCode")
     }
@@ -355,6 +375,26 @@ public extension UserDefaultPreferenceKeys {
         .init(defaultValue: true, key: "AcceptSuggestionWithTab")
     }
 
+    var acceptSuggestionWithModifierCommand: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "SuggestionWithModifierCommand")
+    }
+
+    var acceptSuggestionWithModifierOption: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "SuggestionWithModifierOption")
+    }
+
+    var acceptSuggestionWithModifierControl: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "SuggestionWithModifierControl")
+    }
+
+    var acceptSuggestionWithModifierShift: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "SuggestionWithModifierShift")
+    }
+
+    var acceptSuggestionWithModifierOnlyForSwift: PreferenceKey<Bool> {
+        .init(defaultValue: false, key: "SuggestionWithModifierOnlyForSwift")
+    }
+
     var dismissSuggestionWithEsc: PreferenceKey<Bool> {
         .init(defaultValue: true, key: "DismissSuggestionWithEsc")
     }
@@ -362,7 +402,7 @@ public extension UserDefaultPreferenceKeys {
     var isSuggestionSenseEnabled: PreferenceKey<Bool> {
         .init(defaultValue: false, key: "IsSuggestionSenseEnabled")
     }
-    
+
     var isSuggestionTypeInTheMiddleEnabled: PreferenceKey<Bool> {
         .init(defaultValue: true, key: "IsSuggestionTypeInTheMiddleEnabled")
     }
@@ -466,12 +506,28 @@ public extension UserDefaultPreferenceKeys {
         .init(defaultValue: "", key: "PreferredChatModelIdForWebScope")
     }
     
+    var preferredChatModelIdForUtilities: PreferenceKey<String> {
+        .init(defaultValue: "", key: "PreferredChatModelIdForUtilities")
+    }
+
     var disableFloatOnTopWhenTheChatPanelIsDetached: PreferenceKey<Bool> {
         .init(defaultValue: true, key: "DisableFloatOnTopWhenTheChatPanelIsDetached")
     }
-    
+
     var keepFloatOnTopIfChatPanelAndXcodeOverlaps: PreferenceKey<Bool> {
         .init(defaultValue: true, key: "KeepFloatOnTopIfChatPanelAndXcodeOverlaps")
+    }
+
+    var openChatMode: PreferenceKey<OpenChatMode> {
+        .init(defaultValue: .chatPanel, key: "OpenChatMode")
+    }
+
+    var openChatInBrowserURL: PreferenceKey<String> {
+        .init(defaultValue: "", key: "OpenChatInBrowserURL")
+    }
+
+    var openChatInBrowserInInAppBrowser: PreferenceKey<Bool> {
+        .init(defaultValue: true, key: "OpenChatInBrowserInInAppBrowser")
     }
 }
 
@@ -526,7 +582,7 @@ public extension UserDefaultPreferenceKeys {
             key: "ChatCodeFont"
         )
     }
-    
+
     var terminalFont: PreferenceKey<UserDefaultsStorageBox<StorableFont>> {
         .init(
             defaultValue: .init(.init(nsFont: .monospacedSystemFont(ofSize: 12, weight: .regular))),

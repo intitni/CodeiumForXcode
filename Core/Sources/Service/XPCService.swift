@@ -140,13 +140,13 @@ public class XPCService: NSObject, XPCServiceProtocol {
         }
     }
 
-    public func chatWithSelection(
+    public func openChat(
         editorContent: Data,
         withReply reply: @escaping (Data?, Error?) -> Void
     ) {
-        replyWithUpdatedContent(editorContent: editorContent, withReply: reply) { handler, editor in
-            try await handler.chatWithSelection(editor: editor)
-        }
+        let handler = PseudoCommandHandler()
+        handler.openChat(forceDetach: false)
+        reply(nil, nil)
     }
 
     public func promptToCode(
@@ -177,10 +177,16 @@ public class XPCService: NSObject, XPCServiceProtocol {
         }
         Task { @ServiceActor in
             await Service.shared.realtimeSuggestionController.cancelInFlightTasks()
-            UserDefaults.shared.set(
-                !UserDefaults.shared.value(for: \.realtimeSuggestionToggle),
-                for: \.realtimeSuggestionToggle
-            )
+            let on = !UserDefaults.shared.value(for: \.realtimeSuggestionToggle)
+            UserDefaults.shared.set(on, for: \.realtimeSuggestionToggle)
+            Task { @MainActor in
+                Service.shared.guiController.store
+                    .send(.suggestionWidget(.toastPanel(.toast(.toast(
+                        "Real-time suggestion is turned \(on ? "on" : "off")",
+                        .info,
+                        nil
+                    )))))
+            }
             reply(nil)
         }
     }
@@ -188,6 +194,13 @@ public class XPCService: NSObject, XPCServiceProtocol {
     public func postNotification(name: String, withReply reply: @escaping () -> Void) {
         reply()
         NotificationCenter.default.post(name: .init(name), object: nil)
+    }
+    
+    public func quit(reply: @escaping () -> Void) {
+        Task {
+            await Service.shared.prepareForExit()
+            reply()
+        }
     }
 
     // MARK: - Requests

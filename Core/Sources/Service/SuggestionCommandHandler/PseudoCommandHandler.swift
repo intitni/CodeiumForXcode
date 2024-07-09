@@ -1,13 +1,22 @@
 import ActiveApplicationMonitor
 import AppKit
+import CodeiumService
+import enum CopilotForXcodeKit.SuggestionServiceError
+import Dependencies
+import Logger
+import PlusFeatureFlag
 import Preferences
 import SuggestionInjector
-import SuggestionModel
+import SuggestionBasic
 import Toast
 import Workspace
 import WorkspaceSuggestionService
 import XcodeInspector
 import XPCShared
+
+#if canImport(BrowserChatTab)
+import BrowserChatTab
+#endif
 
 /// It's used to run some commands without really triggering the menu bar item.
 ///
@@ -100,7 +109,16 @@ struct PseudoCommandHandler {
             } else {
                 presenter.discardSuggestion(fileURL: fileURL)
             }
+        } catch let error as SuggestionServiceError {
+            switch error {
+            case let .notice(error):
+                presenter.presentErrorMessage(error.localizedDescription)
+            case .silent:
+                Logger.service.error(error.localizedDescription)
+                return
+            }
         } catch {
+            Logger.service.error(error.localizedDescription)
             return
         }
     }
@@ -210,7 +228,13 @@ struct PseudoCommandHandler {
             guard let focusElement = application.focusedElement,
                   focusElement.description == "Source Editor"
             else { return }
-            guard let (content, lines, _, cursorPosition, cursorOffset) = await getFileContent(sourceEditor: nil)
+            guard let (
+                content,
+                lines,
+                _,
+                cursorPosition,
+                cursorOffset
+            ) = await getFileContent(sourceEditor: nil)
             else {
                 PresentInWindowSuggestionPresenter()
                     .presentErrorMessage("Unable to get file content.")
@@ -266,7 +290,13 @@ struct PseudoCommandHandler {
             guard let focusElement = application.focusedElement,
                   focusElement.description == "Source Editor"
             else { return }
-            guard let (content, lines, _, cursorPosition, cursorOffset) = await getFileContent(sourceEditor: nil)
+            guard let (
+                content,
+                lines,
+                _,
+                cursorPosition,
+                cursorOffset
+            ) = await getFileContent(sourceEditor: nil)
             else {
                 PresentInWindowSuggestionPresenter()
                     .presentErrorMessage("Unable to get file content.")
@@ -300,6 +330,72 @@ struct PseudoCommandHandler {
 
         await filespace.reset()
         PresentInWindowSuggestionPresenter().discardSuggestion(fileURL: documentURL)
+    }
+
+    func openChat(forceDetach: Bool) {
+        switch UserDefaults.shared.value(for: \.openChatMode) {
+        case .chatPanel:
+            let store = Service.shared.guiController.store
+            Task { @MainActor in
+                await store.send(.createAndSwitchToChatGPTChatTabIfNeeded).finish()
+                store.send(.openChatPanel(forceDetach: forceDetach))
+            }
+        case .browser:
+            let urlString = UserDefaults.shared.value(for: \.openChatInBrowserURL)
+            let openInApp = {
+                if !UserDefaults.shared.value(for: \.openChatInBrowserInInAppBrowser) {
+                    return false
+                }
+                return isFeatureAvailable(\.browserTab)
+            }()
+            guard let url = URL(string: urlString) else {
+                let alert = NSAlert()
+                alert.messageText = "Invalid URL"
+                alert.informativeText = "The URL provided is not valid."
+                alert.alertStyle = .warning
+                alert.runModal()
+                return
+            }
+
+            if openInApp {
+                #if canImport(BrowserChatTab)
+                let store = Service.shared.guiController.store
+                Task { @MainActor in
+                    await store.send(.createAndSwitchToChatTabIfNeededMatching(
+                        check: {
+                            func match(_ tabURL: URL?) -> Bool {
+                                guard let tabURL else { return false }
+                                return tabURL == url
+                                    || tabURL.absoluteString.hasPrefix(url.absoluteString)
+                            }
+
+                            guard let tab = $0 as? BrowserChatTab,
+                                  match(tab.url) else { return false }
+                            return true
+                        },
+                        kind: .init(BrowserChatTab.urlChatBuilder(url: url))
+                    )).finish()
+                    store.send(.openChatPanel(forceDetach: forceDetach))
+                }
+                #endif
+            } else {
+                Task {
+                    @Dependency(\.openURL) var openURL
+                    await openURL(url)
+                }
+            }
+        case .codeiumChat:
+            let store = Service.shared.guiController.store
+            Task { @MainActor in
+                await store.send(
+                    .createAndSwitchToChatTabIfNeededMatching(
+                        check: { $0 is CodeiumChatTab },
+                        kind: .init(CodeiumChatTab.defaultChatBuilder())
+                    )
+                ).finish()
+                store.send(.openChatPanel(forceDetach: forceDetach))
+            }
+        }
     }
 }
 

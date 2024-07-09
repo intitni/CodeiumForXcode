@@ -4,30 +4,6 @@
 import Foundation
 import PackageDescription
 
-// MARK: - Pro
-
-extension [Target.Dependency] {
-    func pro(_ targetNames: [String]) -> [Target.Dependency] {
-        if isProIncluded {
-            // include the pro package
-            return self + targetNames.map { Target.Dependency.product(name: $0, package: "Pro") }
-        }
-        return self
-    }
-}
-
-extension [Package.Dependency] {
-    var pro: [Package.Dependency] {
-        if isProIncluded {
-            // include the pro package
-            return self + [.package(path: "../Pro/Pro")]
-        }
-        return self
-    }
-}
-
-let isProIncluded: Bool = false
-
 // MARK: - Package
 
 let package = Package(
@@ -66,14 +42,16 @@ let package = Package(
         .package(url: "https://github.com/gonzalezreal/swift-markdown-ui", from: "2.1.0"),
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.0.0"),
         .package(url: "https://github.com/pointfreeco/swift-parsing", from: "0.12.1"),
-        .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "0.5.1"),
+        .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.0.0"),
         .package(
             url: "https://github.com/pointfreeco/swift-composable-architecture",
-            from: "0.55.0"
+            from: "1.10.4"
         ),
         // quick hack to support custom UserDefaults
         // https://github.com/sindresorhus/KeyboardShortcuts
         .package(url: "https://github.com/intitni/KeyboardShortcuts", branch: "main"),
+        .package(url: "https://github.com/intitni/CGEventOverride", from: "1.2.1"),
+        .package(url: "https://github.com/intitni/Highlightr", branch: "master"),
     ].pro,
     targets: [
         // MARK: - Main
@@ -83,7 +61,7 @@ let package = Package(
             dependencies: [
                 .product(name: "XPCShared", package: "Tool"),
                 .product(name: "SuggestionProvider", package: "Tool"),
-                .product(name: "SuggestionModel", package: "Tool"),
+                .product(name: "SuggestionBasic", package: "Tool"),
                 .product(name: "Logger", package: "Tool"),
                 .product(name: "Preferences", package: "Tool"),
             ].pro([
@@ -99,12 +77,15 @@ let package = Package(
                 "PromptToCodeService",
                 "ServiceUpdateMigration",
                 "ChatGPTChatTab",
+                "PlusFeatureFlag",
+                "KeyBindingManager",
+                "XcodeThemeController",
                 .product(name: "XPCShared", package: "Tool"),
                 .product(name: "SuggestionProvider", package: "Tool"),
                 .product(name: "Workspace", package: "Tool"),
                 .product(name: "UserDefaultsObserver", package: "Tool"),
                 .product(name: "AppMonitoring", package: "Tool"),
-                .product(name: "SuggestionModel", package: "Tool"),
+                .product(name: "SuggestionBasic", package: "Tool"),
                 .product(name: "ChatTab", package: "Tool"),
                 .product(name: "Logger", package: "Tool"),
                 .product(name: "OpenAIService", package: "Tool"),
@@ -125,7 +106,7 @@ let package = Package(
                 "SuggestionInjector",
                 .product(name: "XPCShared", package: "Tool"),
                 .product(name: "SuggestionProvider", package: "Tool"),
-                .product(name: "SuggestionModel", package: "Tool"),
+                .product(name: "SuggestionBasic", package: "Tool"),
                 .product(name: "Preferences", package: "Tool"),
             ]
         ),
@@ -141,7 +122,7 @@ let package = Package(
                 .product(name: "SuggestionProvider", package: "Tool"),
                 .product(name: "Toast", package: "Tool"),
                 .product(name: "SharedUIComponents", package: "Tool"),
-                .product(name: "SuggestionModel", package: "Tool"),
+                .product(name: "SuggestionBasic", package: "Tool"),
                 .product(name: "MarkdownUI", package: "swift-markdown-ui"),
                 .product(name: "OpenAIService", package: "Tool"),
                 .product(name: "Preferences", package: "Tool"),
@@ -157,7 +138,9 @@ let package = Package(
         .target(
             name: "SuggestionService",
             dependencies: [
-                .product(name: "SuggestionModel", package: "Tool"),
+                .product(name: "UserDefaultsObserver", package: "Tool"),
+                .product(name: "Preferences", package: "Tool"),
+                .product(name: "SuggestionBasic", package: "Tool"),
                 .product(name: "SuggestionProvider", package: "Tool")
             ].pro([
                 "ProExtension",
@@ -165,7 +148,7 @@ let package = Package(
         ),
         .target(
             name: "SuggestionInjector",
-            dependencies: [.product(name: "SuggestionModel", package: "Tool")]
+            dependencies: [.product(name: "SuggestionBasic", package: "Tool")]
         ),
         .testTarget(
             name: "SuggestionInjectorTests",
@@ -178,7 +161,7 @@ let package = Package(
             name: "PromptToCodeService",
             dependencies: [
                 .product(name: "FocusedCodeFinder", package: "Tool"),
-                .product(name: "SuggestionModel", package: "Tool"),
+                .product(name: "SuggestionBasic", package: "Tool"),
                 .product(name: "OpenAIService", package: "Tool"),
                 .product(name: "AppMonitoring", package: "Tool"),
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
@@ -348,6 +331,73 @@ let package = Package(
             ],
             path: "Sources/ChatContextCollectors/SystemInfoChatContextCollector"
         ),
+        
+        // MARK: Key Binding
+
+        .target(
+            name: "KeyBindingManager",
+            dependencies: [
+                .product(name: "Workspace", package: "Tool"),
+                .product(name: "Preferences", package: "Tool"),
+                .product(name: "Logger", package: "Tool"),
+                .product(name: "CGEventOverride", package: "CGEventOverride"),
+                .product(name: "AppMonitoring", package: "Tool"),
+                .product(name: "UserDefaultsObserver", package: "Tool"),
+            ]
+        ),
+        .testTarget(
+            name: "KeyBindingManagerTests",
+            dependencies: ["KeyBindingManager"]
+        ),
+        
+        // MARK: Theming
+
+        .target(
+            name: "XcodeThemeController",
+            dependencies: [
+                .product(name: "Preferences", package: "Tool"),
+                .product(name: "AppMonitoring", package: "Tool"),
+                .product(name: "Highlightr", package: "Highlightr"),
+            ]
+        ),
+
     ]
 )
 
+extension [Target.Dependency] {
+    func pro(_ targetNames: [String]) -> [Target.Dependency] {
+        if isProIncluded {
+            // include the pro package
+            return self + targetNames.map { Target.Dependency.product(name: $0, package: "Pro") }
+        }
+        return self
+    }
+}
+
+extension [Package.Dependency] {
+    var pro: [Package.Dependency] {
+        if isProIncluded {
+            // include the pro package
+            return self + [.package(path: "../../CopilotForXcodePro/Pro")]
+        }
+        return self
+    }
+}
+
+let isProIncluded: Bool = {
+    func isProIncluded(file: StaticString = #file) -> Bool {
+        let filePath = "\(file)"
+        let fileURL = URL(fileURLWithPath: filePath)
+        let rootURL = fileURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let confURL = rootURL.appendingPathComponent("PLUS")
+        if !FileManager.default.fileExists(atPath: confURL.path) {
+            return false
+        }
+        return true
+    }
+
+    return isProIncluded()
+}()

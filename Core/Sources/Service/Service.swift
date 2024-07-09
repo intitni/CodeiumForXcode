@@ -1,13 +1,18 @@
+import BuiltinExtension
+import CodeiumService
 import Combine
 import Dependencies
 import Foundation
+import GitHubCopilotService
+import KeyBindingManager
+import Logger
 import SuggestionService
 import Toast
 import Workspace
 import WorkspaceSuggestionService
 import XcodeInspector
+import XcodeThemeController
 import XPCShared
-
 #if canImport(ProService)
 import ProService
 #endif
@@ -28,6 +33,8 @@ public final class Service {
     public let realtimeSuggestionController = RealtimeSuggestionController()
     public let scheduledCleaner: ScheduledCleaner
     let globalShortcutManager: GlobalShortcutManager
+    let keyBindingManager: KeyBindingManager
+    let xcodeThemeController: XcodeThemeController = .init()
 
     #if canImport(ProService)
     let proService: ProService
@@ -39,17 +46,27 @@ public final class Service {
     private init() {
         @Dependency(\.workspacePool) var workspacePool
 
+        BuiltinExtensionManager.shared.setupExtensions([
+            GitHubCopilotExtension(workspacePool: workspacePool),
+            CodeiumExtension(workspacePool: workspacePool),
+        ])
         scheduledCleaner = .init()
         workspacePool.registerPlugin {
-            SuggestionServiceWorkspacePlugin(workspace: $0) { projectRootURL, onLaunched in
-                SuggestionService(projectRootURL: projectRootURL, onServiceLaunched: onLaunched)
-            }
+            SuggestionServiceWorkspacePlugin(workspace: $0) { SuggestionService.service() }
+        }
+        workspacePool.registerPlugin {
+            GitHubCopilotWorkspacePlugin(workspace: $0)
+        }
+        workspacePool.registerPlugin {
+            CodeiumWorkspacePlugin(workspace: $0)
+        }
+        workspacePool.registerPlugin {
+            BuiltinExtensionWorkspacePlugin(workspace: $0)
         }
         self.workspacePool = workspacePool
         globalShortcutManager = .init(guiController: guiController)
-
-        #if canImport(ProService)
-        proService = ProService(
+        keyBindingManager = .init(
+            workspacePool: workspacePool,
             acceptSuggestion: {
                 Task { await PseudoCommandHandler().acceptSuggestion() }
             },
@@ -57,6 +74,9 @@ public final class Service {
                 Task { await PseudoCommandHandler().dismissSuggestion() }
             }
         )
+
+        #if canImport(ProService)
+        proService = ProService()
         #endif
 
         scheduledCleaner.service = self
@@ -67,11 +87,13 @@ public final class Service {
         scheduledCleaner.start()
         realtimeSuggestionController.start()
         guiController.start()
+        xcodeThemeController.start()
         #if canImport(ProService)
         proService.start()
         #endif
         DependencyUpdater().update()
         globalShortcutManager.start()
+        keyBindingManager.start()
 
         Task {
             await XcodeInspector.shared.safe.$activeDocumentURL
@@ -86,9 +108,11 @@ public final class Service {
                 }.store(in: &cancellable)
         }
     }
-    
+
     @MainActor
     public func prepareForExit() async {
+        Logger.service.info("Prepare for exit.")
+        keyBindingManager.stopForExit()
         #if canImport(ProService)
         proService.prepareForExit()
         #endif

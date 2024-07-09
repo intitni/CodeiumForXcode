@@ -3,6 +3,7 @@ import Foundation
 import SwiftUI
 
 /// The information of a tab.
+@ObservableState
 public struct ChatTabInfo: Identifiable, Equatable {
     public var id: String
     public var title: String
@@ -19,8 +20,6 @@ public typealias ChatTab = BaseChatTab & ChatTabType
 
 /// Defines a bunch of things a chat tab should implement.
 public protocol ChatTabType {
-    /// The type of the external dependency required by this chat tab.
-    associatedtype ExternalDependency
     /// Build the view for this chat tab.
     @ViewBuilder
     func buildView() -> any View
@@ -37,14 +36,11 @@ public protocol ChatTabType {
     static var name: String { get }
     /// Available builders for this chat tab.
     /// It's used to generate a list of tab types for user to create.
-    static func chatBuilders(externalDependency: ExternalDependency) -> [ChatTabBuilder]
+    static func chatBuilders() -> [ChatTabBuilder]
     /// Restorable state
     func restorableState() async -> Data
     /// Restore state
-    static func restore(
-        from data: Data,
-        externalDependency: ExternalDependency
-    ) async throws -> any ChatTabBuilder
+    static func restore(from data: Data) async throws -> any ChatTabBuilder
     /// Whenever the body or menu is accessed, this method will be called.
     /// It will be called only once so long as you don't call it yourself.
     /// It will be called from MainActor.
@@ -61,18 +57,26 @@ open class BaseChatTab {
         }
     }
 
-    public var id: String { chatTabViewStore.id }
-    public var title: String { chatTabViewStore.title }
+    public var id: String = ""
+    public var title: String = ""
     /// The store for chat tab info. You should only access it after `start` is called.
     public let chatTabStore: StoreOf<ChatTabItem>
-    /// The view store for chat tab info. You should only access it after `start` is called.
-    public let chatTabViewStore: ViewStoreOf<ChatTabItem>
-    
+
     private var didStart = false
+    private let storeObserver = NSObject()
 
     public init(store: StoreOf<ChatTabItem>) {
         chatTabStore = store
-        chatTabViewStore = ViewStore(store)
+        self.id = store.id
+        self.title = store.title
+        
+        Task { @MainActor in
+            storeObserver.observe { [weak self] in
+                guard let self else { return }
+                self.title = store.title
+                self.id = store.id
+            }
+        }
     }
 
     /// The view for this chat tab.
@@ -102,7 +106,7 @@ open class BaseChatTab {
             EmptyView().id(id)
         }
     }
-    
+
     /// The icon for this chat tab.
     @ViewBuilder
     public var icon: some View {
@@ -113,7 +117,7 @@ open class BaseChatTab {
             EmptyView().id(id)
         }
     }
-    
+
     /// The tab item for this chat tab.
     @ViewBuilder
     public var menu: some View {
@@ -164,14 +168,6 @@ public extension ChatTabType {
     var name: String { Self.name }
 }
 
-public extension ChatTabType where ExternalDependency == Void {
-    /// Available builders for this chat tab.
-    /// It's used to generate a list of tab types for user to create.
-    static func chatBuilders() -> [ChatTabBuilder] {
-        chatBuilders(externalDependency: ())
-    }
-}
-
 /// A chat tab that does nothing.
 public class EmptyChatTab: ChatTab {
     public static var name: String { "Empty" }
@@ -183,7 +179,7 @@ public class EmptyChatTab: ChatTab {
         }
     }
 
-    public static func chatBuilders(externalDependency: Void) -> [ChatTabBuilder] {
+    public static func chatBuilders() -> [ChatTabBuilder] {
         [Builder(title: "Empty")]
     }
 
@@ -197,11 +193,11 @@ public class EmptyChatTab: ChatTab {
     public func buildTabItem() -> any View {
         Text("Empty-\(id)")
     }
-    
+
     public func buildIcon() -> any View {
         Image(systemName: "square")
     }
-    
+
     public func buildMenu() -> any View {
         Text("Empty-\(id)")
     }
@@ -210,22 +206,19 @@ public class EmptyChatTab: ChatTab {
         return Data()
     }
 
-    public static func restore(
-        from data: Data,
-        externalDependency: Void
-    ) async throws -> any ChatTabBuilder {
+    public static func restore(from data: Data) async throws -> any ChatTabBuilder {
         return Builder(title: "Empty")
     }
 
     public convenience init(id: String) {
         self.init(store: .init(
             initialState: .init(id: id, title: "Empty-\(id)"),
-            reducer: ChatTabItem()
+            reducer: { ChatTabItem() }
         ))
     }
 
     public func start() {
-        chatTabViewStore.send(.updateTitle("Empty-\(id)"))
+        chatTabStore.send(.updateTitle("Empty-\(id)"))
     }
 }
 

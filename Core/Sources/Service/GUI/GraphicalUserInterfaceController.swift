@@ -1,12 +1,13 @@
 import ActiveApplicationMonitor
 import AppActivator
 import AppKit
+import BuiltinExtension
 import ChatGPTChatTab
 import ChatTab
 import ComposableArchitecture
 import Dependencies
 import Preferences
-import SuggestionModel
+import SuggestionBasic
 import SuggestionWidget
 
 #if canImport(ProChatTabs)
@@ -17,7 +18,9 @@ import ProChatTabs
 import ChatTabPersistent
 #endif
 
-struct GUI: ReducerProtocol {
+@Reducer
+struct GUI {
+    @ObservableState
     struct State: Equatable {
         var suggestionWidgetState = WidgetFeature.State()
 
@@ -53,7 +56,11 @@ struct GUI: ReducerProtocol {
     enum Action {
         case start
         case openChatPanel(forceDetach: Bool)
-        case createChatGPTChatTabIfNeeded
+        case createAndSwitchToChatGPTChatTabIfNeeded
+        case createAndSwitchToChatTabIfNeededMatching(
+            check: (any ChatTab) -> Bool,
+            kind: ChatTabKind?
+        )
         case sendCustomCommandToActiveChat(CustomCommand)
         case toggleWidgetsHotkeyPressed
 
@@ -75,15 +82,15 @@ struct GUI: ReducerProtocol {
         case updateChatTabOrder
     }
 
-    var body: some ReducerProtocol<State, Action> {
+    var body: some ReducerOf<Self> {
         CombineReducers {
-            Scope(state: \.suggestionWidgetState, action: /Action.suggestionWidget) {
+            Scope(state: \.suggestionWidgetState, action: \.suggestionWidget) {
                 WidgetFeature()
             }
 
             Scope(
                 state: \.chatTabGroup,
-                action: /Action.suggestionWidget .. /WidgetFeature.Action.chatPanel
+                action: \.suggestionWidget.chatPanel
             ) {
                 Reduce { _, action in
                     switch action {
@@ -115,7 +122,7 @@ struct GUI: ReducerProtocol {
             }
 
             #if canImport(ChatTabPersistent)
-            Scope(state: \.persistentState, action: /Action.persistent) {
+            Scope(state: \.persistentState, action: \.persistent) {
                 ChatTabPersistent()
             }
             #endif
@@ -143,14 +150,37 @@ struct GUI: ReducerProtocol {
                         activateThisApp()
                     }
 
-                case .createChatGPTChatTabIfNeeded:
-                    if state.chatTabGroup.tabInfo.contains(where: {
-                        chatTabPool.getTab(of: $0.id) is ChatGPTChatTab
-                    }) {
+                case .createAndSwitchToChatGPTChatTabIfNeeded:
+                    return .run { send in
+                        await send(.createAndSwitchToChatTabIfNeededMatching(
+                            check: { $0 is ChatGPTChatTab },
+                            kind: nil
+                        ))
+                    }
+
+                case let .createAndSwitchToChatTabIfNeededMatching(check, kind):
+                    if let selectedTabInfo = state.chatTabGroup.selectedTabInfo,
+                       let tab = chatTabPool.getTab(of: selectedTabInfo.id),
+                       check(tab)
+                    {
+                        // Already in ChatGPT tab
                         return .none
                     }
+
+                    if let firstChatGPTTabInfo = state.chatTabGroup.tabInfo.first(where: {
+                        if let tab = chatTabPool.getTab(of: $0.id) {
+                            return check(tab)
+                        }
+                        return false
+                    }) {
+                        return .run { send in
+                            await send(.suggestionWidget(.chatPanel(.tabClicked(
+                                id: firstChatGPTTabInfo.id
+                            ))))
+                        }
+                    }
                     return .run { send in
-                        if let (_, chatTabInfo) = await chatTabPool.createTab(for: nil) {
+                        if let (_, chatTabInfo) = await chatTabPool.createTab(for: kind) {
                             await send(
                                 .suggestionWidget(.chatPanel(.appendAndSelectTab(chatTabInfo)))
                             )
@@ -251,10 +281,9 @@ struct GUI: ReducerProtocol {
 
 @MainActor
 public final class GraphicalUserInterfaceController {
-    private let store: StoreOf<GUI>
+    let store: StoreOf<GUI>
     let widgetController: SuggestionWidgetController
     let widgetDataSource: WidgetDataSource
-    let viewStore: ViewStoreOf<GUI>
     let chatTabPool: ChatTabPool
 
     class WeakStoreHolder {
@@ -289,18 +318,17 @@ public final class GraphicalUserInterfaceController {
         }
         let store = StoreOf<GUI>(
             initialState: .init(),
-            reducer: GUI(),
-            prepareDependencies: setupDependency
+            reducer: { GUI() },
+            withDependencies: setupDependency
         )
         self.store = store
         self.chatTabPool = chatTabPool
-        viewStore = ViewStore(store)
         widgetDataSource = .init()
 
         widgetController = SuggestionWidgetController(
             store: store.scope(
                 state: \.suggestionWidgetState,
-                action: GUI.Action.suggestionWidget
+                action: \.suggestionWidget
             ),
             chatTabPool: chatTabPool,
             dependency: suggestionDependency
@@ -309,8 +337,7 @@ public final class GraphicalUserInterfaceController {
         chatTabPool.createStore = { id in
             store.scope(
                 state: { state in
-                    state.chatTabGroup.tabInfo[id: id]
-                        ?? .init(id: id, title: "")
+                    state.chatTabGroup.tabInfo[id: id] ?? .init(id: id, title: "")
                 },
                 action: { childAction in
                     .suggestionWidget(.chatPanel(.chatTab(id: id, action: childAction)))
@@ -321,8 +348,8 @@ public final class GraphicalUserInterfaceController {
         suggestionDependency.suggestionWidgetDataSource = widgetDataSource
         suggestionDependency.onOpenChatClicked = { [weak self] in
             Task { [weak self] in
-                await self?.viewStore.send(.createChatGPTChatTabIfNeeded).finish()
-                self?.viewStore.send(.openChatPanel(forceDetach: false))
+                await self?.store.send(.createAndSwitchToChatGPTChatTabIfNeeded).finish()
+                self?.store.send(.openChatPanel(forceDetach: false))
             }
         }
         suggestionDependency.onCustomCommandClicked = { command in
@@ -338,10 +365,7 @@ public final class GraphicalUserInterfaceController {
     }
 
     public func openGlobalChat() {
-        Task {
-            await self.viewStore.send(.createChatGPTChatTabIfNeeded).finish()
-            viewStore.send(.openChatPanel(forceDetach: true))
-        }
+        PseudoCommandHandler().openChat(forceDetach: true)
     }
 }
 
@@ -364,12 +388,7 @@ extension ChatTabPool {
     ) async -> (any ChatTab, ChatTabInfo)? {
         let id = UUID().uuidString
         let info = ChatTabInfo(id: id, title: "")
-        guard let builder = kind?.builder else {
-            let chatTap = ChatGPTChatTab(store: createStore(id))
-            setTab(chatTap)
-            return (chatTap, info)
-        }
-
+        let builder = kind?.builder ?? ChatGPTChatTab.defaultBuilder()
         guard let chatTap = await builder.build(store: createStore(id)) else { return nil }
         setTab(chatTap)
         return (chatTap, info)
@@ -382,38 +401,25 @@ extension ChatTabPool {
     ) async -> (any ChatTab, ChatTabInfo)? {
         switch data.name {
         case ChatGPTChatTab.name:
-            guard let builder = try? await ChatGPTChatTab.restore(
-                from: data.data,
-                externalDependency: ()
-            ) else { break }
-            return await createTab(id: data.id, from: builder)
-        case EmptyChatTab.name:
-            guard let builder = try? await EmptyChatTab.restore(
-                from: data.data,
-                externalDependency: ()
-            ) else { break }
+            guard let builder = try? await ChatGPTChatTab.restore(from: data.data) else { break }
             return await createTab(id: data.id, from: builder)
         case BrowserChatTab.name:
-            guard let builder = try? BrowserChatTab.restore(
-                from: data.data,
-                externalDependency: ChatTabFactory.externalDependenciesForBrowserChatTab()
-            ) else { break }
+            guard let builder = try? BrowserChatTab.restore(from: data.data) else { break }
             return await createTab(id: data.id, from: builder)
         case TerminalChatTab.name:
-            guard let builder = try? await TerminalChatTab.restore(
-                from: data.data,
-                externalDependency: ()
-            ) else { break }
+            guard let builder = try? await TerminalChatTab.restore(from: data.data) else { break }
             return await createTab(id: data.id, from: builder)
         default:
-            break
+            let chatTabTypes = BuiltinExtensionManager.shared.extensions.flatMap(\.chatTabTypes)
+            for type in chatTabTypes {
+                if type.name == data.name {
+                    guard let builder = try? await type.restore(from: data.data) else { break }
+                    return await createTab(id: data.id, from: builder)
+                }
+            }
         }
 
-        guard let builder = try? await EmptyChatTab.restore(
-            from: data.data, externalDependency: ()
-        ) else {
-            return nil
-        }
+        guard let builder = try? await EmptyChatTab.restore(from: data.data) else { return nil }
         return await createTab(id: data.id, from: builder)
     }
     #endif
