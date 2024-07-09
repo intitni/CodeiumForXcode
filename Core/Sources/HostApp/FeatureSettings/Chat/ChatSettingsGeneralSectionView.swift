@@ -56,21 +56,21 @@ struct ChatSettingsGeneralSectionView: View {
     @ViewBuilder
     var openChatSettingsForm: some View {
         Form {
-            Picker(
-                "Open Chat Mode",
-                selection: $settings.openChatMode
-            ) {
-                ForEach(OpenChatMode.allCases, id: \.rawValue) { mode in
-                    switch mode {
-                    case .chatPanel:
-                        Text("Open chat panel").tag(mode)
-                    case .browser:
-                        Text("Open web page in browser").tag(mode)
-                    case .codeiumChat:
-                        Text("Open Codeium chat tab (beta)").tag(mode)
-                    }
-                }
-            }
+//            Picker(
+//                "Open Chat Mode",
+//                selection: $settings.openChatMode
+//            ) {
+//                ForEach(OpenChatMode.allCases, id: \.rawValue) { mode in
+//                    switch mode {
+//                    case .chatPanel:
+//                        Text("Open chat panel").tag(mode)
+//                    case .browser:
+//                        Text("Open web page in browser").tag(mode)
+//                    case .codeiumChat:
+//                        Text("Open Codeium chat tab (beta)").tag(mode)
+//                    }
+//                }
+//            }
 
             if settings.openChatMode == .browser {
                 TextField(

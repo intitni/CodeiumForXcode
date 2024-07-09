@@ -12,6 +12,8 @@ public extension UserDefaults {
     static var shared = UserDefaults(suiteName: userDefaultSuiteName)!
 
     static func setupDefaultSettings() {
+        shared.set(.codeiumChat, for: \.openChatMode)
+        
         shared.setupDefaultValue(for: \.quitXPCServiceOnXcodeAndAppQuit)
         shared.setupDefaultValue(for: \.realtimeSuggestionToggle)
         shared.setupDefaultValue(for: \.realtimeSuggestionDebounce)

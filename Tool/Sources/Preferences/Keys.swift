@@ -519,7 +519,7 @@ public extension UserDefaultPreferenceKeys {
     }
 
     var openChatMode: PreferenceKey<OpenChatMode> {
-        .init(defaultValue: .chatPanel, key: "OpenChatMode")
+        .init(defaultValue: .codeiumChat, key: "OpenChatMode")
     }
 
     var openChatInBrowserURL: PreferenceKey<String> {
