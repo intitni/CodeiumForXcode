@@ -81,7 +81,7 @@ A [recommended setup](https://github.com/intitni/CopilotForXcode/issues/14) that
 
 | Command             | Key Binding                                            |
 | ------------------- | ------------------------------------------------------ |
-| Accept Suggestions  | `⌥}` (Or accept with Tab if Plus license is available) |
+| Accept Suggestions  | `⌥}` or accept with Tab                                |
 | Reject Suggestion   | `⌥{`                                                   |
 | Next Suggestion     | `⌥>`                                                   |
 | Previous Suggestion | `⌥<`                                                   |
