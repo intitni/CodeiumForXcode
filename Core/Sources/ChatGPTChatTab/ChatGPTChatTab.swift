@@ -4,6 +4,7 @@ import ChatTab
 import CodableWrappers
 import Combine
 import ComposableArchitecture
+import DebounceFunction
 import Foundation
 import OpenAIService
 import Preferences
@@ -15,8 +16,9 @@ public class ChatGPTChatTab: ChatTab {
 
     public let service: ChatService
     let chat: StoreOf<Chat>
-    let viewStore: ViewStoreOf<Chat>
     private var cancellable = Set<AnyCancellable>()
+    private var observer = NSObject()
+    private let updateContentDebounce = DebounceRunner(duration: 0.5)
 
     struct RestorableState: Codable {
         var history: [OpenAIService.ChatMessage]
@@ -50,8 +52,8 @@ public class ChatGPTChatTab: ChatTab {
     }
 
     public func buildIcon() -> any View {
-        WithViewStore(chat, observe: \.isReceivingMessage) { viewStore in
-            if viewStore.state {
+        WithPerceptionTracking {
+            if self.chat.isReceivingMessage {
                 Image(systemName: "ellipsis.message")
             } else {
                 Image(systemName: "message")
@@ -60,7 +62,7 @@ public class ChatGPTChatTab: ChatTab {
     }
 
     public func buildMenu() -> any View {
-        ChatContextMenu(store: chat.scope(state: \.chatMenu, action: Chat.Action.chatMenu))
+        ChatContextMenu(store: chat.scope(state: \.chatMenu, action: \.chatMenu))
     }
 
     public func restorableState() async -> Data {
@@ -74,10 +76,7 @@ public class ChatGPTChatTab: ChatTab {
         return (try? JSONEncoder().encode(state)) ?? Data()
     }
 
-    public static func restore(
-        from data: Data,
-        externalDependency: Void
-    ) async throws -> any ChatTabBuilder {
+    public static func restore(from data: Data) async throws -> any ChatTabBuilder {
         let state = try JSONDecoder().decode(RestorableState.self, from: data)
         let builder = Builder(title: "Chat") { @MainActor tab in
             tab.service.configuration.overriding = state.configuration
@@ -89,12 +88,12 @@ public class ChatGPTChatTab: ChatTab {
             await tab.service.memory.mutateHistory { history in
                 history = state.history
             }
-            tab.viewStore.send(.refresh)
+            tab.chat.send(.refresh)
         }
         return builder
     }
 
-    public static func chatBuilders(externalDependency: Void) -> [ChatTabBuilder] {
+    public static func chatBuilders() -> [ChatTabBuilder] {
         let customCommands = UserDefaults.shared.value(for: \.customCommands).compactMap {
             command in
             if case .customChat = command.feature {
@@ -105,50 +104,73 @@ public class ChatGPTChatTab: ChatTab {
 
         return [Builder(title: "New Chat", customCommand: nil)] + customCommands
     }
+    
+    public static func defaultBuilder() -> ChatTabBuilder {
+        Builder(title: "New Chat", customCommand: nil)
+    }
 
     @MainActor
     public init(service: ChatService = .init(), store: StoreOf<ChatTabItem>) {
         self.service = service
-        chat = .init(initialState: .init(), reducer: Chat(service: service))
-        viewStore = .init(chat)
+        chat = .init(initialState: .init(), reducer: { Chat(service: service) })
         super.init(store: store)
     }
 
     public func start() {
-        chatTabViewStore.send(.updateTitle("Chat"))
+        observer = .init()
+        cancellable = []
 
-        chatTabViewStore.publisher.focusTrigger.removeDuplicates().sink { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.viewStore.send(.focusOnTextField)
-            }
-        }.store(in: &cancellable)
+        chatTabStore.send(.updateTitle("Chat"))
 
         service.$systemPrompt.removeDuplicates().sink { [weak self] _ in
             Task { @MainActor [weak self] in
-                self?.chatTabViewStore.send(.tabContentUpdated)
+                self?.chatTabStore.send(.tabContentUpdated)
             }
         }.store(in: &cancellable)
 
         service.$extraSystemPrompt.removeDuplicates().sink { [weak self] _ in
             Task { @MainActor [weak self] in
-                self?.chatTabViewStore.send(.tabContentUpdated)
+                self?.chatTabStore.send(.tabContentUpdated)
             }
         }.store(in: &cancellable)
 
-        viewStore.publisher.map(\.title).removeDuplicates().sink { [weak self] title in
-            Task { @MainActor [weak self] in
-                self?.chatTabViewStore.send(.updateTitle(title))
+        do {
+            var lastTrigger = -1
+            observer.observe { [weak self] in
+                guard let self else { return }
+                let trigger = chatTabStore.focusTrigger
+                guard lastTrigger != trigger else { return }
+                lastTrigger = trigger
+                Task { @MainActor [weak self] in
+                    self?.chat.send(.focusOnTextField)
+                }
             }
-        }.store(in: &cancellable)
+        }
 
-        viewStore.publisher.removeDuplicates().debounce(
-            for: .milliseconds(500),
-            scheduler: DispatchQueue.main
-        ).sink { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.chatTabViewStore.send(.tabContentUpdated)
+        do {
+            var lastTitle = ""
+            observer.observe { [weak self] in
+                guard let self else { return }
+                let title = self.chatTabStore.state.title
+                guard lastTitle != title else { return }
+                lastTitle = title
+                Task { @MainActor [weak self] in
+                    self?.chatTabStore.send(.updateTitle(title))
+                }
             }
-        }.store(in: &cancellable)
+        }
+
+        observer.observe { [weak self] in
+            guard let self else { return }
+            _ = chat.history
+            _ = chat.title
+            _ = chat.isReceivingMessage
+            Task {
+                await self.updateContentDebounce.debounce { @MainActor [weak self] in
+                    self?.chatTabStore.send(.tabContentUpdated)
+                }
+            }
+        }
     }
 }
 

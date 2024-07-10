@@ -1,5 +1,5 @@
 import Foundation
-import SuggestionModel
+import SuggestionBasic
 
 @objc(XPCServiceProtocol)
 public protocol XPCServiceProtocol {
@@ -31,7 +31,7 @@ public protocol XPCServiceProtocol {
         editorContent: Data,
         withReply reply: @escaping (_ updatedContent: Data?, Error?) -> Void
     )
-    func chatWithSelection(
+    func openChat(
         editorContent: Data,
         withReply reply: @escaping (Data?, Error?) -> Void
     )
@@ -56,6 +56,7 @@ public protocol XPCServiceProtocol {
     func getXPCServiceAccessibilityPermission(withReply reply: @escaping (Bool) -> Void)
     func postNotification(name: String, withReply reply: @escaping () -> Void)
     func send(endpoint: String, requestBody: Data, reply: @escaping (Data?, Error?) -> Void)
+    func quit(reply: @escaping () -> Void)
 }
 
 public struct NoResponse: Codable {

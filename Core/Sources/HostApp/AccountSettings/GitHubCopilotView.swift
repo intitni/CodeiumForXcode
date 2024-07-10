@@ -3,7 +3,7 @@ import Client
 import GitHubCopilotService
 import Preferences
 import SharedUIComponents
-import SuggestionModel
+import SuggestionBasic
 import SwiftUI
 
 struct GitHubCopilotView: View {
@@ -20,8 +20,11 @@ struct GitHubCopilotView: View {
         @AppStorage(\.gitHubCopilotProxyPassword) var gitHubCopilotProxyPassword
         @AppStorage(\.gitHubCopilotUseStrictSSL) var gitHubCopilotUseStrictSSL
         @AppStorage(\.gitHubCopilotEnterpriseURI) var gitHubCopilotEnterpriseURI
+        @AppStorage(\.gitHubCopilotPretendIDEToBeVSCode) var pretendIDEToBeVSCode
         @AppStorage(\.disableGitHubCopilotSettingsAutoRefreshOnAppear)
         var disableGitHubCopilotSettingsAutoRefreshOnAppear
+        @AppStorage(\.gitHubCopilotLoadKeyChainCertificates)
+        var gitHubCopilotLoadKeyChainCertificates
         init() {}
     }
 
@@ -196,6 +199,10 @@ struct GitHubCopilotView: View {
                         .foregroundColor(.secondary)
                         .font(.callout)
                         .dynamicHeightTextInFormWorkaround()
+                        
+                        Toggle(isOn: $settings.gitHubCopilotLoadKeyChainCertificates) {
+                            Text("Load certificates in keychain")
+                        }
                     }
                 }
 
@@ -212,7 +219,7 @@ struct GitHubCopilotView: View {
                         case let .installed(version):
                             Text("Copilot.Vim Version: \(version)")
                             uninstallButton
-                        case let .outdated(version, latest):
+                        case let .outdated(version, latest, _):
                             Text("Copilot.Vim Version: \(version) (Update Available: \(latest))")
                             updateButton
                             uninstallButton
@@ -257,7 +264,7 @@ struct GitHubCopilotView: View {
                     .opacity(isRunningAction ? 0.8 : 1)
                     .disabled(isRunningAction)
 
-                    Button("Refresh Configuration for Enterprise and Proxy") {
+                    Button("Refresh configurations") {
                         refreshConfiguration()
                     }
                 }
@@ -265,7 +272,8 @@ struct GitHubCopilotView: View {
                 SettingsDivider("Advanced")
 
                 Form {
-                    Toggle("Verbose Log", isOn: $settings.gitHubCopilotVerboseLog)
+                    Toggle("Verbose log", isOn: $settings.gitHubCopilotVerboseLog)
+                    Toggle("Pretend IDE to be VSCode", isOn: $settings.pretendIDEToBeVSCode)
                 }
 
                 SettingsDivider("Enterprise")
@@ -275,7 +283,7 @@ struct GitHubCopilotView: View {
                         text: $settings.gitHubCopilotEnterpriseURI,
                         prompt: Text("Leave it blank if non is available.")
                     ) {
-                        Text("Auth Provider URL")
+                        Text("Auth provider URL")
                     }
                 }
 
@@ -286,18 +294,18 @@ struct GitHubCopilotView: View {
                         text: $settings.gitHubCopilotProxyHost,
                         prompt: Text("xxx.xxx.xxx.xxx, leave it blank to disable proxy.")
                     ) {
-                        Text("Proxy Host")
+                        Text("Proxy host")
                     }
                     TextField(text: $settings.gitHubCopilotProxyPort, prompt: Text("80")) {
-                        Text("Proxy Port")
+                        Text("Proxy port")
                     }
                     TextField(text: $settings.gitHubCopilotProxyUsername) {
-                        Text("Proxy Username")
+                        Text("Proxy username")
                     }
                     SecureField(text: $settings.gitHubCopilotProxyPassword) {
-                        Text("Proxy Password")
+                        Text("Proxy password")
                     }
-                    Toggle("Proxy Strict SSL", isOn: $settings.gitHubCopilotUseStrictSSL)
+                    Toggle("Proxy strict SSL", isOn: $settings.gitHubCopilotUseStrictSSL)
                 }
             }
             Spacer()

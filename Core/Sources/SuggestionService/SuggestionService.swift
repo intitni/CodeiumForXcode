@@ -1,8 +1,14 @@
+import BuiltinExtension
+import CodeiumService
+import struct CopilotForXcodeKit.WorkspaceInfo
+import enum CopilotForXcodeKit.SuggestionServiceError
 import Foundation
+import GitHubCopilotService
 import Preferences
-import SuggestionModel
+import SuggestionBasic
 import SuggestionProvider
 import UserDefaultsObserver
+import Workspace
 
 #if canImport(ProExtension)
 import ProExtension
@@ -11,120 +17,79 @@ import ProExtension
 public protocol SuggestionServiceType: SuggestionServiceProvider {}
 
 public actor SuggestionService: SuggestionServiceType {
-    public var configuration: SuggestionServiceConfiguration {
+    public var configuration: SuggestionProvider.SuggestionServiceConfiguration {
         get async { await suggestionProvider.configuration }
     }
 
-    var middlewares: [SuggestionServiceMiddleware] {
-        SuggestionServiceMiddlewareContainer.middlewares
-    }
+    let middlewares: [SuggestionServiceMiddleware]
 
-    let projectRootURL: URL
-    let onServiceLaunched: (SuggestionServiceProvider) -> Void
-    let providerChangeObserver = UserDefaultsObserver(
-        object: UserDefaults.shared,
-        forKeyPaths: [UserDefaultPreferenceKeys().suggestionFeatureProvider.key],
-        context: nil
-    )
-
-    lazy var suggestionProvider: SuggestionServiceProvider = buildService()
-
-    var serviceType: SuggestionFeatureProvider {
-//        UserDefaults.shared.value(for: \.suggestionFeatureProvider)
-        .builtIn(.codeium)
-    }
+    let suggestionProvider: SuggestionServiceProvider
 
     public init(
-        projectRootURL: URL,
-        onServiceLaunched: @escaping (SuggestionServiceProvider) -> Void
+        provider: any SuggestionServiceProvider,
+        middlewares: [SuggestionServiceMiddleware] = SuggestionServiceMiddlewareContainer
+            .middlewares
     ) {
-        self.projectRootURL = projectRootURL
-        self.onServiceLaunched = onServiceLaunched
-
-        providerChangeObserver.onChange = { [weak self] in
-            Task { [weak self] in
-                guard let self else { return }
-                await rebuildService()
-            }
-        }
+        suggestionProvider = provider
+        self.middlewares = middlewares
     }
 
-    func buildService() -> SuggestionServiceProvider {
-        #if canImport(ProExtension)
-        if let provider = ProExtension.suggestionProviderFactory(serviceType) {
-            return provider
-        }
-        #endif
-
-        switch serviceType {
-        case .builtIn(.codeium):
-            return CodeiumSuggestionProvider(
-                projectRootURL: projectRootURL,
-                onServiceLaunched: onServiceLaunched
-            )
-        case .builtIn(.gitHubCopilot), .extension:
-            return GitHubCopilotSuggestionProvider(
-                projectRootURL: projectRootURL,
-                onServiceLaunched: onServiceLaunched
-            )
-        }
-    }
-
-    func rebuildService() {
-        suggestionProvider = buildService()
+    public static func service(
+        for serviceType: SuggestionFeatureProvider = UserDefaults.shared
+            .value(for: \.suggestionFeatureProvider)
+    ) -> SuggestionService {
+        let provider = BuiltinExtensionSuggestionServiceProvider(
+            extension: CodeiumExtension.self
+        )
+        return SuggestionService(provider: provider)
     }
 }
 
 public extension SuggestionService {
     func getSuggestions(
-        _ request: SuggestionRequest
-    ) async throws -> [SuggestionModel.CodeSuggestion] {
-        var getSuggestion = suggestionProvider.getSuggestions
-        let configuration = await configuration
-
-        for middleware in middlewares.reversed() {
-            getSuggestion = { [getSuggestion] request in
-                try await middleware.getSuggestion(
-                    request,
-                    configuration: configuration,
-                    next: getSuggestion
-                )
+        _ request: SuggestionRequest,
+        workspaceInfo: CopilotForXcodeKit.WorkspaceInfo
+    ) async throws -> [SuggestionBasic.CodeSuggestion] {
+        do {
+            var getSuggestion = suggestionProvider.getSuggestions(_:workspaceInfo:)
+            let configuration = await configuration
+            
+            for middleware in middlewares.reversed() {
+                getSuggestion = { [getSuggestion] request, workspaceInfo in
+                    try await middleware.getSuggestion(
+                        request,
+                        configuration: configuration,
+                        next: { [getSuggestion] request in
+                            try await getSuggestion(request, workspaceInfo)
+                        }
+                    )
+                }
             }
+            
+            return try await getSuggestion(request, workspaceInfo)
+        } catch let error as SuggestionServiceError {
+            throw error
+        } catch {
+            throw SuggestionServiceError.silent(error)
         }
-
-        return try await getSuggestion(request)
     }
 
-    func notifyAccepted(_ suggestion: SuggestionModel.CodeSuggestion) async {
-        await suggestionProvider.notifyAccepted(suggestion)
+    func notifyAccepted(
+        _ suggestion: SuggestionBasic.CodeSuggestion,
+        workspaceInfo: CopilotForXcodeKit.WorkspaceInfo
+    ) async {
+        await suggestionProvider.notifyAccepted(suggestion, workspaceInfo: workspaceInfo)
     }
 
-    func notifyRejected(_ suggestions: [SuggestionModel.CodeSuggestion]) async {
-        await suggestionProvider.notifyRejected(suggestions)
+    func notifyRejected(
+        _ suggestions: [SuggestionBasic.CodeSuggestion],
+        workspaceInfo: CopilotForXcodeKit.WorkspaceInfo
+    ) async {
+        await suggestionProvider.notifyRejected(suggestions, workspaceInfo: workspaceInfo)
     }
 
-    func notifyOpenTextDocument(fileURL: URL, content: String) async throws {
-        try await suggestionProvider.notifyOpenTextDocument(fileURL: fileURL, content: content)
-    }
-
-    func notifyChangeTextDocument(fileURL: URL, content: String) async throws {
-        try await suggestionProvider.notifyChangeTextDocument(fileURL: fileURL, content: content)
-    }
-
-    func notifyCloseTextDocument(fileURL: URL) async throws {
-        try await suggestionProvider.notifyCloseTextDocument(fileURL: fileURL)
-    }
-
-    func notifySaveTextDocument(fileURL: URL) async throws {
-        try await suggestionProvider.notifySaveTextDocument(fileURL: fileURL)
-    }
-
-    func cancelRequest() async {
-        await suggestionProvider.cancelRequest()
-    }
-
-    func terminate() async {
-        await suggestionProvider.terminate()
+    func cancelRequest(workspaceInfo: CopilotForXcodeKit.WorkspaceInfo) async {
+        await suggestionProvider.cancelRequest(workspaceInfo: workspaceInfo)
     }
 }
 

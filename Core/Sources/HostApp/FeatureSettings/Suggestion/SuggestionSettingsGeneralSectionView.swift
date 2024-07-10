@@ -97,6 +97,7 @@ struct SuggestionSettingsGeneralSectionView: View {
     @StateObject var settings = Settings()
     @State var isSuggestionFeatureEnabledListPickerOpen = false
     @State var isSuggestionFeatureDisabledLanguageListViewOpen = false
+    @State var isTabToAcceptSuggestionModifierViewOpen = false
 
     var body: some View {
         Form {
@@ -171,17 +172,24 @@ struct SuggestionSettingsGeneralSectionView: View {
                 Text("Real-time suggestion")
             }
 
-            #if canImport(ProHostApp)
-            WithFeatureEnabled(\.tabToAcceptSuggestion) {
-                Toggle(isOn: $settings.acceptSuggestionWithTab) {
+            Toggle(isOn: $settings.acceptSuggestionWithTab) {
+                HStack {
                     Text("Accept suggestion with Tab")
+
+                    Button(action: {
+                        isTabToAcceptSuggestionModifierViewOpen = true
+                    }) {
+                        Image(systemName: "gearshape.fill")
+                    }
+                    .buttonStyle(.plain)
                 }
+            }.sheet(isPresented: $isTabToAcceptSuggestionModifierViewOpen) {
+                TabToAcceptSuggestionModifierView()
             }
 
             Toggle(isOn: $settings.dismissSuggestionWithEsc) {
                 Text("Dismiss suggestion with ESC")
             }
-            #endif
 
             HStack {
                 Toggle(isOn: $settings.disableSuggestionFeatureGlobally) {
@@ -237,14 +245,66 @@ struct SuggestionSettingsGeneralSectionView: View {
                 Text("Hide common preceding spaces")
             }
 
-            #if canImport(ProHostApp)
-
             CodeHighlightThemePicker(scenario: .suggestion)
-
-            #endif
 
             FontPicker(font: $settings.font) {
                 Text("Font")
+            }
+        }
+    }
+
+    struct TabToAcceptSuggestionModifierView: View {
+        final class Settings: ObservableObject {
+            @AppStorage(\.acceptSuggestionWithModifierCommand)
+            var needCommand
+            @AppStorage(\.acceptSuggestionWithModifierOption)
+            var needOption
+            @AppStorage(\.acceptSuggestionWithModifierShift)
+            var needShift
+            @AppStorage(\.acceptSuggestionWithModifierControl)
+            var needControl
+            @AppStorage(\.acceptSuggestionWithModifierOnlyForSwift)
+            var onlyForSwift
+        }
+
+        @StateObject var settings = Settings()
+        @Environment(\.dismiss) var dismiss
+
+        var body: some View {
+            VStack(spacing: 0) {
+                Form {
+                    Text("Accept suggestion with modifier")
+                        .font(.headline)
+                    HStack {
+                        Toggle(isOn: $settings.needCommand) {
+                            Text("Command")
+                        }
+                        Toggle(isOn: $settings.needOption) {
+                            Text("Option")
+                        }
+                        Toggle(isOn: $settings.needShift) {
+                            Text("Shift")
+                        }
+                        Toggle(isOn: $settings.needControl) {
+                            Text("Control")
+                        }
+                    }
+                    Toggle(isOn: $settings.onlyForSwift) {
+                        Text("Only require modifiers for Swift")
+                    }
+                }
+                .padding()
+
+                Divider()
+
+                HStack {
+                    Spacer()
+                    Button(action: { dismiss() }) {
+                        Text("Done")
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+                .padding()
             }
         }
     }
@@ -253,5 +313,9 @@ struct SuggestionSettingsGeneralSectionView: View {
 #Preview {
     SuggestionSettingsGeneralSectionView()
         .padding()
+}
+
+#Preview {
+    SuggestionSettingsGeneralSectionView.TabToAcceptSuggestionModifierView()
 }
 

@@ -1,4 +1,4 @@
-import SuggestionModel
+import SuggestionBasic
 import XPCShared
 
 protocol SuggestionCommandHandler {
@@ -18,8 +18,6 @@ protocol SuggestionCommandHandler {
     func presentRealtimeSuggestions(editor: EditorContent) async throws -> UpdatedContent?
     @ServiceActor
     func generateRealtimeSuggestions(editor: EditorContent) async throws -> UpdatedContent?
-    @ServiceActor
-    func chatWithSelection(editor: EditorContent) async throws -> UpdatedContent?
     @ServiceActor
     func promptToCode(editor: EditorContent) async throws -> UpdatedContent?
     @ServiceActor

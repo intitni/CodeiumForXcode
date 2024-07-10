@@ -1,17 +1,44 @@
 import AppKit
 import ChatTab
-import Combine
 import ComposableArchitecture
 import Foundation
 import SwiftUI
 
-final class ChatPanelWindow: NSWindow {
+final class ChatPanelWindow: WidgetWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
 
-    private var cancellable: Set<AnyCancellable> = []
+    private let storeObserver = NSObject()
 
     var minimizeWindow: () -> Void = {}
+
+    override var defaultCollectionBehavior: NSWindow.CollectionBehavior {
+        [
+            .fullScreenAuxiliary,
+            .transient,
+            .fullScreenPrimary,
+            .fullScreenAllowsTiling,
+        ]
+    }
+
+    override var switchingSpaceCollectionBehavior: NSWindow.CollectionBehavior {
+        [
+            .fullScreenAuxiliary,
+            .transient,
+            .fullScreenPrimary,
+            .fullScreenAllowsTiling,
+        ]
+    }
+    
+    override var fullscreenCollectionBehavior: NSWindow.CollectionBehavior {
+        [
+            .fullScreenAuxiliary,
+            .transient,
+            .fullScreenPrimary,
+            .fullScreenAllowsTiling,
+            .canJoinAllSpaces,
+        ]
+    }
 
     init(
         store: StoreOf<ChatPanelFeature>,
@@ -39,13 +66,8 @@ final class ChatPanelWindow: NSWindow {
         isReleasedWhenClosed = false
         isOpaque = false
         backgroundColor = .clear
-        level = .init(NSWindow.Level.floating.rawValue + 1)
-        collectionBehavior = [
-            .fullScreenAuxiliary,
-            .transient,
-            .fullScreenPrimary,
-            .fullScreenAllowsTiling,
-        ]
+        level = widgetLevel(1)
+
         hasShadow = true
         contentView = NSHostingView(
             rootView: ChatWindowView(
@@ -60,18 +82,22 @@ final class ChatPanelWindow: NSWindow {
         setIsVisible(true)
         isPanelDisplayed = false
 
-        let viewStore = ViewStore(store)
-        viewStore.publisher
-            .map(\.isDetached)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] isDetached in
-                guard let self else { return }
+        storeObserver.observe { [weak self] in
+            guard let self else { return }
+            let isDetached = store.isDetached
+            Task { @MainActor in
                 if UserDefaults.shared.value(for: \.disableFloatOnTopWhenTheChatPanelIsDetached) {
                     self.setFloatOnTop(!isDetached)
                 } else {
                     self.setFloatOnTop(true)
                 }
-            }.store(in: &cancellable)
+            }
+        }
+    }
+    
+    func centerInActiveSpaceIfNeeded() {
+        guard !isOnActiveSpace else { return }
+        center()
     }
 
     func setFloatOnTop(_ isFloatOnTop: Bool) {

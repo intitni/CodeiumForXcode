@@ -1,6 +1,6 @@
 import Foundation
 import Preferences
-import SuggestionModel
+import SuggestionBasic
 import UserDefaultsObserver
 import XcodeInspector
 
@@ -74,7 +74,7 @@ public final class Workspace {
     public let openedFileRecoverableStorage: OpenedFileRecoverableStorage
     public private(set) var lastLastUpdateTime = Environment.now()
     public var isExpired: Bool {
-        Environment.now().timeIntervalSince(lastLastUpdateTime) > 60 * 60 * 1
+        Environment.now().timeIntervalSince(lastLastUpdateTime) > 30 * 60 * 1
     }
 
     public private(set) var filespaces = [URL: Filespace]()
@@ -150,6 +150,7 @@ public final class Workspace {
     public func didUpdateFilespace(fileURL: URL, content: String) {
         refreshUpdateTime()
         guard let filespace = filespaces[fileURL] else { return }
+        filespace.bumpVersion()
         filespace.refreshUpdateTime()
         for plugin in plugins.values {
             plugin.didUpdateFilespace(filespace, content: content)

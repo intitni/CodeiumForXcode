@@ -8,6 +8,7 @@ struct BotMessage: View {
     var r: Double { messageBubbleCornerRadius }
     let id: String
     let text: String
+    let markdownContent: MarkdownContent
     let references: [DisplayedChatMessage.Reference]
     let chat: StoreOf<Chat>
     @Environment(\.colorScheme) var colorScheme
@@ -43,7 +44,7 @@ struct BotMessage: View {
                     }
                 }
 
-                ThemedMarkdownText(text)
+                ThemedMarkdownText(markdownContent)
             }
             .frame(alignment: .trailing)
             .padding()
@@ -89,41 +90,45 @@ struct ReferenceList: View {
     let chat: StoreOf<Chat>
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(0..<references.endIndex, id: \.self) { index in
-                    let reference = references[index]
+        WithPerceptionTracking {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(0..<references.endIndex, id: \.self) { index in
+                        WithPerceptionTracking {
+                            let reference = references[index]
 
-                    Button(action: {
-                        chat.send(.referenceClicked(reference))
-                    }) {
-                        HStack(spacing: 8) {
-                            ReferenceIcon(kind: reference.kind)
-                                .layoutPriority(2)
-                            Text(reference.title)
-                                .truncationMode(.middle)
-                                .lineLimit(1)
-                                .layoutPriority(1)
-                            Text(reference.subtitle)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                                .foregroundStyle(.tertiary)
-                                .layoutPriority(0)
-                        }
-                        .padding(.vertical, 4)
-                        .padding(.horizontal, 4)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                            Button(action: {
+                                chat.send(.referenceClicked(reference))
+                            }) {
+                                HStack(spacing: 8) {
+                                    ReferenceIcon(kind: reference.kind)
+                                        .layoutPriority(2)
+                                    Text(reference.title)
+                                        .truncationMode(.middle)
+                                        .lineLimit(1)
+                                        .layoutPriority(1)
+                                    Text(reference.subtitle)
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
+                                        .foregroundStyle(.tertiary)
+                                        .layoutPriority(0)
+                                }
+                                .padding(.vertical, 4)
+                                .padding(.horizontal, 4)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                                }
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
-                    .buttonStyle(.plain)
                 }
+                .padding()
             }
-            .padding()
+            .frame(maxWidth: 500, maxHeight: 500)
         }
-        .frame(maxWidth: 500, maxHeight: 500)
     }
 }
 
@@ -205,14 +210,16 @@ struct ReferenceIcon: View {
 }
 
 #Preview("Bot Message") {
-    BotMessage(
-        id: "1",
-        text: """
+    let text = """
         **Hey**! What can I do for you?**Hey**! What can I do for you?**Hey**! What can I do for you?**Hey**! What can I do for you?
         ```swift
         func foo() {}
         ```
-        """,
+        """
+    return BotMessage(
+        id: "1",
+        text: text,
+        markdownContent: .init(text),
         references: .init(repeating: .init(
             title: "ReferenceList",
             subtitle: "/Core/Sources/ChatGPTChatTab/Views/BotMessage.swift:100",
@@ -220,7 +227,7 @@ struct ReferenceIcon: View {
             startLine: nil,
             kind: .class
         ), count: 20),
-        chat: .init(initialState: .init(), reducer: Chat(service: .init()))
+        chat: .init(initialState: .init(), reducer: { Chat(service: .init()) })
     )
     .padding()
     .fixedSize(horizontal: true, vertical: true)
@@ -270,6 +277,6 @@ struct ReferenceIcon: View {
             startLine: nil,
             kind: .webpage
         ),
-    ], chat: .init(initialState: .init(), reducer: Chat(service: .init())))
+    ], chat: .init(initialState: .init(), reducer: { Chat(service: .init()) }))
 }
 
