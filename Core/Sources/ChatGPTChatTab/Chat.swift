@@ -1,6 +1,8 @@
+import ChatBasic
 import ChatService
 import ComposableArchitecture
 import Foundation
+import MarkdownUI
 import OpenAIService
 import Preferences
 import Terminal
@@ -40,12 +42,14 @@ public struct DisplayedChatMessage: Equatable {
     public var id: String
     public var role: Role
     public var text: String
+    public var markdownContent: MarkdownContent
     public var references: [Reference] = []
 
     public init(id: String, role: Role, text: String, references: [Reference]) {
         self.id = id
         self.role = role
         self.text = text
+        markdownContent = .init(text)
         self.references = references
     }
 }
@@ -54,16 +58,20 @@ private var isPreview: Bool {
     ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
 }
 
-struct Chat: ReducerProtocol {
+@Reducer
+struct Chat {
     public typealias MessageID = String
 
+    @ObservableState
     struct State: Equatable {
         var title: String = "Chat"
-        @BindingState var typedMessage = ""
+        var typedMessage = ""
         var history: [DisplayedChatMessage] = []
-        @BindingState var isReceivingMessage = false
+        var isReceivingMessage = false
         var chatMenu = ChatMenu.State()
-        @BindingState var focusedField: Field?
+        var focusedField: Field?
+        var isEnabled = true
+        var isPinnedToBottom = true
 
         enum Field: String, Hashable {
             case textField
@@ -75,6 +83,7 @@ struct Chat: ReducerProtocol {
 
         case appear
         case refresh
+        case setIsEnabled(Bool)
         case sendButtonTapped
         case returnButtonTapped
         case stopRespondingButtonTapped
@@ -82,6 +91,8 @@ struct Chat: ReducerProtocol {
         case deleteMessageButtonTapped(MessageID)
         case resendMessageButtonTapped(MessageID)
         case setAsExtraPromptButtonTapped(MessageID)
+        case manuallyScrolledUp
+        case scrollToBottomButtonTapped
         case focusOnTextField
         case referenceClicked(DisplayedChatMessage.Reference)
 
@@ -115,7 +126,7 @@ struct Chat: ReducerProtocol {
 
     @Dependency(\.openURL) var openURL
 
-    var body: some ReducerProtocol<State, Action> {
+    var body: some ReducerOf<Self> {
         BindingReducer()
 
         Scope(state: \.chatMenu, action: /Action.chatMenu) {
@@ -140,6 +151,10 @@ struct Chat: ReducerProtocol {
                 return .run { send in
                     await send(.chatMenu(.refresh))
                 }
+
+            case let .setIsEnabled(isEnabled):
+                state.isEnabled = isEnabled
+                return .none
 
             case .sendButtonTapped:
                 guard !state.typedMessage.isEmpty else { return .none }
@@ -203,6 +218,14 @@ struct Chat: ReducerProtocol {
                     }
                 }
 
+            case .manuallyScrolledUp:
+                state.isPinnedToBottom = false
+                return .none
+
+            case .scrollToBottomButtonTapped:
+                state.isPinnedToBottom = true
+                return .none
+
             case .focusOnTextField:
                 state.focusedField = .textField
                 return .none
@@ -229,7 +252,7 @@ struct Chat: ReducerProtocol {
                     let debouncedHistoryChange = TimedDebounceFunction(duration: 0.2) {
                         await send(.historyChanged)
                     }
-                    
+
                     for await _ in stream {
                         await debouncedHistoryChange()
                     }
@@ -363,6 +386,9 @@ struct Chat: ReducerProtocol {
 
             case .isReceivingMessageChanged:
                 state.isReceivingMessage = service.isReceivingMessage
+                if service.isReceivingMessage {
+                    state.isPinnedToBottom = true
+                }
                 return .none
 
             case .systemPromptChanged:
@@ -387,7 +413,9 @@ struct Chat: ReducerProtocol {
     }
 }
 
-struct ChatMenu: ReducerProtocol {
+@Reducer
+struct ChatMenu {
+    @ObservableState
     struct State: Equatable {
         var systemPrompt: String = ""
         var extraSystemPrompt: String = ""
@@ -409,7 +437,7 @@ struct ChatMenu: ReducerProtocol {
 
     let service: ChatService
 
-    var body: some ReducerProtocol<State, Action> {
+    var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
             case .appear:
@@ -478,9 +506,10 @@ private actor TimedDebounceFunction {
             }
         }
     }
-    
+
     func fire() async {
         lastFireTime = Date()
         await block()
     }
 }
+

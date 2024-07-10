@@ -14,10 +14,14 @@ struct CodeiumView: View {
         @AppStorage(\.codeiumEnterpriseMode) var codeiumEnterpriseMode
         @AppStorage(\.codeiumPortalUrl) var codeiumPortalUrl
         @AppStorage(\.codeiumApiUrl) var codeiumApiUrl
+        @AppStorage(\.codeiumIndexEnabled) var indexEnabled
 
         init() {
             isSignedIn = codeiumAuthService.isSignedIn
-            installationStatus = installationManager.checkInstallation()
+            installationStatus = .notInstalled
+            Task { @MainActor in
+                installationStatus = await installationManager.checkInstallation()
+            }
         }
 
         init(
@@ -56,7 +60,7 @@ struct CodeiumView: View {
 
         func refreshInstallationStatus() {
             Task { @MainActor in
-                installationStatus = installationManager.checkInstallation()
+                installationStatus = await installationManager.checkInstallation()
             }
         }
 
@@ -200,6 +204,12 @@ struct CodeiumView: View {
                     case .done:
                         toast("Done!", .info)
                     }
+                }
+            }
+            
+            SubSection(title: Text("Indexing")) {
+                Form {
+                    Toggle("Enable Indexing", isOn: $viewModel.indexEnabled)
                 }
             }
 

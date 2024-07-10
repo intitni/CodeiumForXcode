@@ -2,7 +2,7 @@ import AppKit
 import Client
 import Foundation
 import GitHubCopilotService
-import SuggestionModel
+import SuggestionBasic
 import Workspace
 import XCTest
 import XPCShared
@@ -14,6 +14,10 @@ func completion(text: String, range: CursorRange, uuid: String = "") -> CodeSugg
 }
 
 class MockSuggestionService: GitHubCopilotSuggestionServiceType {
+    func notifyChangeTextDocument(fileURL: URL, content: String, version: Int) async throws {
+        fatalError()
+    }
+
     func terminate() async {
         fatalError()
     }
@@ -23,10 +27,6 @@ class MockSuggestionService: GitHubCopilotSuggestionServiceType {
     }
 
     func notifyOpenTextDocument(fileURL: URL, content: String) async throws {
-        fatalError()
-    }
-
-    func notifyChangeTextDocument(fileURL: URL, content: String) async throws {
         fatalError()
     }
 
@@ -49,11 +49,12 @@ class MockSuggestionService: GitHubCopilotSuggestionServiceType {
     func getCompletions(
         fileURL: URL,
         content: String,
-        cursorPosition: SuggestionModel.CursorPosition,
+        originalContent: String,
+        cursorPosition: SuggestionBasic.CursorPosition,
         tabSize: Int,
         indentSize: Int,
         usesTabsForIndentation: Bool
-    ) async throws -> [SuggestionModel.CodeSuggestion] {
+    ) async throws -> [SuggestionBasic.CodeSuggestion] {
         completions
     }
 

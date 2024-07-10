@@ -53,7 +53,7 @@
 		C882175C294187EF00A22FD3 /* Client in Frameworks */ = {isa = PBXBuildFile; productRef = C882175B294187EF00A22FD3 /* Client */; };
 		C89E75C32A46FB32000DD64F /* AppDelegate+Menu.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89E75C22A46FB32000DD64F /* AppDelegate+Menu.swift */; };
 		C8C8B60929AFA35F00034BEE /* CodeiumForXcodeExtensionService.app in Embed XPCService */ = {isa = PBXBuildFile; fileRef = C861E60E2994F6070056CB02 /* CodeiumForXcodeExtensionService.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		C8DCF00029CE11D500FDDDD7 /* ChatWithSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DCEFFF29CE11D500FDDDD7 /* ChatWithSelection.swift */; };
+		C8DCF00029CE11D500FDDDD7 /* OpenChat.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DCEFFF29CE11D500FDDDD7 /* OpenChat.swift */; };
 		C8DD9CB12BC673F80036641C /* CloseIdleTabsCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DD9CB02BC673F80036641C /* CloseIdleTabsCommand.swift */; };
 /* End PBXBuildFile section */
 
@@ -205,7 +205,6 @@
 		C8216B772980370100AD38C7 /* ReloadLaunchAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReloadLaunchAgent.swift; sourceTree = "<group>"; };
 		C828B27D2B1F241500E7612A /* ExtensionPoint.appextensionpoint */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = ExtensionPoint.appextensionpoint; sourceTree = "<group>"; };
 		C82E38492A1F025F00D4EADF /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
-		C83E5DED2A38CD8C0071506D /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		C8520300293C4D9000460097 /* Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Helpers.swift; sourceTree = "<group>"; };
 		C8520308293D805800460097 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		C861A6A229E5503F005C41A3 /* PromptToCodeCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptToCodeCommand.swift; sourceTree = "<group>"; };
@@ -236,7 +235,7 @@
 		C887BC832965D96000931567 /* DEVELOPMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DEVELOPMENT.md; sourceTree = "<group>"; };
 		C89E75C22A46FB32000DD64F /* AppDelegate+Menu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate+Menu.swift"; sourceTree = "<group>"; };
 		C8CD828229B88006008D044D /* TestPlan.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = TestPlan.xctestplan; sourceTree = "<group>"; };
-		C8DCEFFF29CE11D500FDDDD7 /* ChatWithSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWithSelection.swift; sourceTree = "<group>"; };
+		C8DCEFFF29CE11D500FDDDD7 /* OpenChat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenChat.swift; sourceTree = "<group>"; };
 		C8DD9CB02BC673F80036641C /* CloseIdleTabsCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloseIdleTabsCommand.swift; sourceTree = "<group>"; };
 		C8F103292A7A365000D28F4F /* launchAgent.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = launchAgent.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -320,7 +319,7 @@
 				C8009C022941C576007AA7E8 /* RealtimeSuggestionCommand.swift */,
 				C800DBB0294C624D00B04CAC /* PrefetchSuggestionsCommand.swift */,
 				C8758E6F29F04BFF00D29C1C /* CustomCommand.swift */,
-				C8DCEFFF29CE11D500FDDDD7 /* ChatWithSelection.swift */,
+				C8DCEFFF29CE11D500FDDDD7 /* OpenChat.swift */,
 				C8DD9CB02BC673F80036641C /* CloseIdleTabsCommand.swift */,
 				C861A6A229E5503F005C41A3 /* PromptToCodeCommand.swift */,
 				C81458972939EFDC00135263 /* Info.plist */,
@@ -335,7 +334,6 @@
 				C887BC832965D96000931567 /* DEVELOPMENT.md */,
 				C8520308293D805800460097 /* README.md */,
 				C82E38492A1F025F00D4EADF /* LICENSE */,
-				C83E5DED2A38CD8C0071506D /* Makefile */,
 				C8F103292A7A365000D28F4F /* launchAgent.plist */,
 				C8738B6D2BE4F3E800609E7F /* bridgeLaunchAgent.plist */,
 				C81E867D296FE4420026E908 /* Version.xcconfig */,
@@ -675,7 +673,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C8DCF00029CE11D500FDDDD7 /* ChatWithSelection.swift in Sources */,
+				C8DCF00029CE11D500FDDDD7 /* OpenChat.swift in Sources */,
 				C81458942939EFDC00135263 /* SourceEditorExtension.swift in Sources */,
 				C8DD9CB12BC673F80036641C /* CloseIdleTabsCommand.swift in Sources */,
 				C8758E7029F04BFF00D29C1C /* CustomCommand.swift in Sources */,
@@ -773,6 +771,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = "$(APP_BUILD)";
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 5YKZ4Y3DAW;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = EditorExtension/Info.plist;
@@ -800,6 +799,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = "$(APP_BUILD)";
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 5YKZ4Y3DAW;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = EditorExtension/Info.plist;
@@ -854,9 +854,11 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -915,9 +917,11 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -945,6 +949,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = "$(APP_BUILD)";
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"Copilot for Xcode/Preview Content\"";
 				DEVELOPMENT_TEAM = 5YKZ4Y3DAW;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -977,6 +982,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = "$(APP_BUILD)";
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"Copilot for Xcode/Preview Content\"";
 				DEVELOPMENT_TEAM = 5YKZ4Y3DAW;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1002,6 +1008,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 5YKZ4Y3DAW;
 				ENABLE_HARDENED_RUNTIME = YES;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
@@ -1015,6 +1022,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 5YKZ4Y3DAW;
 				ENABLE_HARDENED_RUNTIME = YES;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
@@ -1033,6 +1041,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = "$(APP_BUILD)";
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 5YKZ4Y3DAW;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -1065,6 +1074,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = "$(APP_BUILD)";
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 5YKZ4Y3DAW;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;

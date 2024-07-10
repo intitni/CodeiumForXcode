@@ -5,7 +5,7 @@ import Combine
 import Foundation
 import Logger
 import Preferences
-import SuggestionModel
+import SuggestionBasic
 import Toast
 
 public extension Notification.Name {
@@ -18,6 +18,7 @@ public enum XcodeInspectorActor: GlobalActor {
     public static let shared = Actor()
 }
 
+#warning("TODO: Consider rewriting it with Swift Observation")
 public final class XcodeInspector: ObservableObject {
     public static let shared = XcodeInspector()
     
