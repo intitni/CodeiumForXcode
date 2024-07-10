@@ -4,6 +4,7 @@ import AppKit
 import BuiltinExtension
 import ChatGPTChatTab
 import ChatTab
+import CodeiumService
 import ComposableArchitecture
 import Dependencies
 import Preferences
@@ -388,7 +389,7 @@ extension ChatTabPool {
     ) async -> (any ChatTab, ChatTabInfo)? {
         let id = UUID().uuidString
         let info = ChatTabInfo(id: id, title: "")
-        let builder = kind?.builder ?? ChatGPTChatTab.defaultBuilder()
+        let builder = kind?.builder ?? CodeiumChatTab.defaultChatBuilder()
         guard let chatTap = await builder.build(store: createStore(id)) else { return nil }
         setTab(chatTap)
         return (chatTap, info)

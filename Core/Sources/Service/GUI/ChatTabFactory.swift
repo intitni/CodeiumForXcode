@@ -27,7 +27,7 @@ enum ChatTabFactory {
         ]
         #endif
 
-        return collection.compactMap { $0 } + chatTabsFromExtensions()
+        return chatTabsFromExtensions()
     }
 
     private static func folderIfNeeded(
@@ -43,7 +43,9 @@ enum ChatTabFactory {
 
     static func chatTabsFromExtensions() -> [ChatTabBuilderCollection] {
         let extensions = BuiltinExtensionManager.shared.extensions
-        let chatTabTypes = extensions.flatMap(\.chatTabTypes)
+        let chatTabTypes = extensions
+            .filter { $0.extensionIdentifier == "com.codeium" }
+            .flatMap(\.chatTabTypes)
         return chatTabTypes.compactMap { folderIfNeeded($0.chatBuilders(), title: $0.name) }
     }
 }
@@ -52,59 +54,60 @@ enum ChatTabFactory {
 let lazyLoadDependency: () = {
     BrowserChatTab.externalDependency = .init(
         handleCustomCommand: { command, prompt in
-           switch command.feature {
-           case let .chatWithSelection(extraSystemPrompt, _, useExtraSystemPrompt):
-               let service = ChatService()
-               return try await service.processMessage(
-                   systemPrompt: nil,
-                   extraSystemPrompt: (useExtraSystemPrompt ?? false) ? extraSystemPrompt :
-                       nil,
-                   prompt: prompt
-               )
-           case let .customChat(systemPrompt, _):
-               let service = ChatService()
-               return try await service.processMessage(
-                   systemPrompt: systemPrompt,
-                   extraSystemPrompt: nil,
-                   prompt: prompt
-               )
-           case let .singleRoundDialog(
-               systemPrompt,
-               overwriteSystemPrompt,
-               _,
-               _
-           ):
-               let service = ChatService()
-               return try await service.handleSingleRoundDialogCommand(
-                   systemPrompt: systemPrompt,
-                   overwriteSystemPrompt: overwriteSystemPrompt ?? false,
-                   prompt: prompt
-               )
-           case let .promptToCode(extraSystemPrompt, instruction, _, _):
-               let service = OpenAIPromptToCodeService()
+            switch command.feature {
+            case let .chatWithSelection(extraSystemPrompt, _, useExtraSystemPrompt):
+                let service = ChatService()
+                return try await service.processMessage(
+                    systemPrompt: nil,
+                    extraSystemPrompt: (useExtraSystemPrompt ?? false) ? extraSystemPrompt :
+                        nil,
+                    prompt: prompt
+                )
+            case let .customChat(systemPrompt, _):
+                let service = ChatService()
+                return try await service.processMessage(
+                    systemPrompt: systemPrompt,
+                    extraSystemPrompt: nil,
+                    prompt: prompt
+                )
+            case let .singleRoundDialog(
+                systemPrompt,
+                overwriteSystemPrompt,
+                _,
+                _
+            ):
+                let service = ChatService()
+                return try await service.handleSingleRoundDialogCommand(
+                    systemPrompt: systemPrompt,
+                    overwriteSystemPrompt: overwriteSystemPrompt ?? false,
+                    prompt: prompt
+                )
+            case let .promptToCode(extraSystemPrompt, instruction, _, _):
+                let service = OpenAIPromptToCodeService()
 
-               let result = try await service.modifyCode(
-                   code: prompt,
-                   requirement: instruction ?? "Modify content.",
-                   source: .init(
-                       language: .plaintext,
-                       documentURL: .init(fileURLWithPath: "/"),
-                       projectRootURL: .init(fileURLWithPath: "/"),
-                       content: prompt,
-                       lines: prompt.breakLines(),
-                       range: .outOfScope
-                   ),
-                   isDetached: true,
-                   extraSystemPrompt: extraSystemPrompt,
-                   generateDescriptionRequirement: false
-               )
-               var code = ""
-               for try await (newCode, _) in result {
-                   code = newCode
-               }
-               return code
-           }
-       }
+                let result = try await service.modifyCode(
+                    code: prompt,
+                    requirement: instruction ?? "Modify content.",
+                    source: .init(
+                        language: .plaintext,
+                        documentURL: .init(fileURLWithPath: "/"),
+                        projectRootURL: .init(fileURLWithPath: "/"),
+                        content: prompt,
+                        lines: prompt.breakLines(),
+                        range: .outOfScope
+                    ),
+                    isDetached: true,
+                    extraSystemPrompt: extraSystemPrompt,
+                    generateDescriptionRequirement: false
+                )
+                var code = ""
+                for try await (newCode, _) in result {
+                    code = newCode
+                }
+                return code
+            }
+        }
     )
 }()
 #endif
+
