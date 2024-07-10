@@ -1,5 +1,5 @@
-GITHUB_URL := https://github.com/intitni/CopilotForXcode/
-ZIPNAME_BASE := Copilot.for.Xcode.app
+GITHUB_URL := https://github.com/intitni/CodeiumForXcode/
+ZIPNAME_BASE := Codeium.for.Xcode.app
 APPCAST_PATH := ./appcast.xml
 
 setup:
@@ -7,7 +7,7 @@ setup:
 
 # Usage: make appcast app=path/to/bundle.app tag=1.0.0 [channel=beta] [release=1]
 appcast:
-	$(eval RELEASEDIR := ~/Library/Caches/CopilotForXcodeRelease/$(shell uuidgen))
+	$(eval RELEASEDIR := ~/Library/Caches/CodeiumForXcodeRelease/$(shell uuidgen))
 	$(eval BUNDLENAME := $(shell basename "$(app)"))
 	$(eval WORKDIR := $(shell dirname "$(app)"))
 	$(eval ZIPNAME := $(ZIPNAME_BASE)$(if $(channel),.$(channel).$(if $(release),$(release),1)))
