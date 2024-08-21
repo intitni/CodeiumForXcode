@@ -8,6 +8,10 @@ import Foundation
 import SwiftUI
 import XcodeInspector
 
+#warning("""
+TODO: This part is too messy, consider breaking it up, let each window handle their own things
+""")
+
 actor WidgetWindowsController: NSObject {
     let userDefaultsObservers = WidgetUserDefaultsObservers()
     var xcodeInspector: XcodeInspector { .shared }
@@ -418,7 +422,13 @@ extension WidgetWindowsController {
                     windows.widgetWindow.alphaValue = if noFocus {
                         0
                     } else if previousAppIsXcode {
-                        1
+                        if windows.chatPanelWindow.isFullscreen,
+                           windows.chatPanelWindow.isOnActiveSpace
+                        {
+                            0
+                        } else {
+                            1
+                        }
                     } else {
                         0
                     }
@@ -508,7 +518,7 @@ extension WidgetWindowsController {
             )
 
             updateWindowLocationTask = Task {
-                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                try await Task.sleep(nanoseconds: UInt64(delay * 500_000_000))
                 try Task.checkCancellation()
                 await update()
             }
@@ -573,11 +583,10 @@ extension WidgetWindowsController {
 
     @MainActor
     func handleXcodeFullscreenChange() async {
-        guard let activeXcode = await XcodeInspector.shared.safe.activeXcode
-        else { return }
+        let activeXcode = await XcodeInspector.shared.safe.activeXcode
 
-        let xcode = activeXcode.appElement
-        let isFullscreen = if let xcodeWindow = xcode.focusedWindow {
+        let xcode = activeXcode?.appElement
+        let isFullscreen = if let xcode, let xcodeWindow = xcode.focusedWindow {
             xcodeWindow.isFullScreen && xcode.isFrontmost
         } else {
             false
@@ -593,10 +602,8 @@ extension WidgetWindowsController {
             $0.send(.didChangeActiveSpace(fullscreen: isFullscreen))
         }
 
-        if windows.fullscreenDetector.isOnActiveSpace {
-            if xcode.focusedWindow != nil {
-                windows.orderFront()
-            }
+        if windows.fullscreenDetector.isOnActiveSpace, xcode?.focusedWindow != nil {
+            windows.orderFront()
         }
     }
 }
@@ -816,7 +823,9 @@ public final class WidgetWindows {
         toastWindow.orderFrontRegardless()
         sharedPanelWindow.orderFrontRegardless()
         suggestionPanelWindow.orderFrontRegardless()
-        if chatPanelWindow.level.rawValue > NSWindow.Level.normal.rawValue {
+        if chatPanelWindow.level.rawValue > NSWindow.Level.normal.rawValue,
+           store.withState({ !$0.chatPanelState.isDetached })
+        {
             chatPanelWindow.orderFrontRegardless()
         }
     }
@@ -856,6 +865,10 @@ class WidgetWindow: CanBecomeKeyWindow {
         [.fullScreenAuxiliary, .transient]
     }
 
+    var isFullscreen: Bool {
+        styleMask.contains(.fullScreen)
+    }
+
     private var state: State? {
         didSet {
             guard state != oldValue else { return }
@@ -885,3 +898,4 @@ func widgetLevel(_ addition: Int) -> NSWindow.Level {
     minimumWidgetLevel = NSWindow.Level.floating.rawValue
     return .init(minimumWidgetLevel + addition)
 }
+
