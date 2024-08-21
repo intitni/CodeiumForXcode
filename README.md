@@ -8,7 +8,8 @@ If you have any trouble using the app, please open an issue at [https://github.c
 
 ## Features
 
-- Code Suggestions.
+- Code Suggestions
+- Chat
 
 ## Table of Contents
 
@@ -144,6 +145,9 @@ Whenever your code is updated, the app will automatically fetch suggestions for 
 - Prefetch Suggestions: Call only by Codeium for Xcode. In the background, Codeium for Xcode will occasionally run this command to prefetch real-time suggestions.
 - Real-time Suggestions: Call only by Codeium for Xcode. When suggestions are successfully fetched, Copilot for Xcode will run this command to present the suggestions.
 
+### Chat
+
+You can use Codeium chat in the chat window.
 
 ## Limitations
 
