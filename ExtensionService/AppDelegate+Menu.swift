@@ -33,7 +33,7 @@ extension AppDelegate {
         statusBarItem.menu = statusBarMenu
 
         let hostAppName = Bundle.main.object(forInfoDictionaryKey: "HOST_APP_NAME") as? String
-            ?? "Copilot for Xcode"
+            ?? "Codeium for Xcode"
 
         let copilotName = NSMenuItem(
             title: hostAppName,
