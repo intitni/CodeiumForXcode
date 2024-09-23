@@ -2,13 +2,10 @@ import ComposableArchitecture
 import Dependencies
 import Foundation
 import LaunchAgentManager
+import SharedUIComponents
 import SwiftUI
 import Toast
 import UpdateChecker
-
-#if canImport(ProHostApp)
-import ProHostApp
-#endif
 
 @MainActor
 let hostAppStore: StoreOf<HostApp> = .init(initialState: .init(), reducer: { HostApp() })
@@ -18,6 +15,10 @@ public struct TabContainer: View {
     @ObservedObject var toastController: ToastController
     @State private var tabBarItems = [TabBarItem]()
     @State var tag: Int = 0
+
+    var externalTabContainer: ExternalTabContainer {
+        ExternalTabContainer.tabContainer(for: "TabContainer")
+    }
 
     public init() {
         toastController = ToastControllerDependencyKey.liveValue

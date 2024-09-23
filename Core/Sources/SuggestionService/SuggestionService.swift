@@ -1,7 +1,7 @@
 import BuiltinExtension
 import CodeiumService
-import struct CopilotForXcodeKit.WorkspaceInfo
 import enum CopilotForXcodeKit.SuggestionServiceError
+import struct CopilotForXcodeKit.WorkspaceInfo
 import Foundation
 import GitHubCopilotService
 import Preferences
@@ -17,21 +17,25 @@ import ProExtension
 public protocol SuggestionServiceType: SuggestionServiceProvider {}
 
 public actor SuggestionService: SuggestionServiceType {
+    public typealias Middleware = SuggestionServiceMiddleware
+    public typealias EventHandler = SuggestionServiceEventHandler
     public var configuration: SuggestionProvider.SuggestionServiceConfiguration {
         get async { await suggestionProvider.configuration }
     }
 
-    let middlewares: [SuggestionServiceMiddleware]
+    let middlewares: [Middleware]
+    let eventHandlers: [EventHandler]
 
     let suggestionProvider: SuggestionServiceProvider
 
     public init(
         provider: any SuggestionServiceProvider,
-        middlewares: [SuggestionServiceMiddleware] = SuggestionServiceMiddlewareContainer
-            .middlewares
+        middlewares: [Middleware] = SuggestionServiceMiddlewareContainer.middlewares,
+        eventHandlers: [EventHandler] = SuggestionServiceEventHandlerContainer.handlers
     ) {
         suggestionProvider = provider
         self.middlewares = middlewares
+        self.eventHandlers = eventHandlers
     }
 
     public static func service(
@@ -53,7 +57,7 @@ public extension SuggestionService {
         do {
             var getSuggestion = suggestionProvider.getSuggestions(_:workspaceInfo:)
             let configuration = await configuration
-            
+
             for middleware in middlewares.reversed() {
                 getSuggestion = { [getSuggestion] request, workspaceInfo in
                     try await middleware.getSuggestion(
@@ -65,7 +69,7 @@ public extension SuggestionService {
                     )
                 }
             }
-            
+
             return try await getSuggestion(request, workspaceInfo)
         } catch let error as SuggestionServiceError {
             throw error
@@ -78,6 +82,7 @@ public extension SuggestionService {
         _ suggestion: SuggestionBasic.CodeSuggestion,
         workspaceInfo: CopilotForXcodeKit.WorkspaceInfo
     ) async {
+        eventHandlers.forEach { $0.didAccept(suggestion, workspaceInfo: workspaceInfo) }
         await suggestionProvider.notifyAccepted(suggestion, workspaceInfo: workspaceInfo)
     }
 
@@ -85,6 +90,7 @@ public extension SuggestionService {
         _ suggestions: [SuggestionBasic.CodeSuggestion],
         workspaceInfo: CopilotForXcodeKit.WorkspaceInfo
     ) async {
+        eventHandlers.forEach { $0.didReject(suggestions, workspaceInfo: workspaceInfo) }
         await suggestionProvider.notifyRejected(suggestions, workspaceInfo: workspaceInfo)
     }
 
