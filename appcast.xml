@@ -3,6 +3,15 @@
     <channel>
         <title>Codeium for Xcode</title>
         <item>
+            <title>0.34.1</title>
+            <pubDate>Mon, 23 Sep 2024 15:19:25 +0800</pubDate>
+            <sparkle:version>413</sparkle:version>
+            <sparkle:shortVersionString>0.34.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>12.0</sparkle:minimumSystemVersion>
+            <sparkle:releaseNotesLink>https://github.com/intitni/CodeiumForXcode/releases/tag/codeium%2F0.34.1</sparkle:releaseNotesLink>
+            <enclosure url="https://github.com/intitni/CodeiumForXcode/releases/download/codeium%2F0.34.1/Codeium.for.Xcode.app.zip" length="39221923" type="application/octet-stream" sparkle:edSignature="0MMRtDtBjmq1cs/XN1v3DZD20DZSX32cbsC2mU4goOntgJG7/7bHOl2rfiPZikGS72yYbrhgzP+W5L2xRnzBAw=="/>
+        </item>
+        <item>
             <title>0.33.8</title>
             <pubDate>Thu, 22 Aug 2024 00:47:42 +0800</pubDate>
             <sparkle:version>402</sparkle:version>
@@ -19,17 +28,6 @@
             <sparkle:minimumSystemVersion>12.0</sparkle:minimumSystemVersion>
             <sparkle:releaseNotesLink>https://github.com/intitni/CodeiumForXcode/releases/tag/codeium%2F0.33.5</sparkle:releaseNotesLink>
             <enclosure url="https://github.com/intitni/CodeiumForXcode/releases/download/codeium%2F0.33.5/Codeium.for.Xcode.app.zip" length="41202756" type="application/octet-stream" sparkle:edSignature="+3xl0ecwXeYyZl0RX8S8I8j80tz3y1oTXfOsk4wLiJ66VwW3jQMpxsX+Sg6SzJigdMnCKPMqOlcQdrYafIhDCA=="/>
-        </item>
-        <item>
-            <title>0.33.0</title>
-            <pubDate>Tue, 21 May 2024 02:18:11 +0800</pubDate>
-            <sparkle:version>376</sparkle:version>
-            <sparkle:shortVersionString>0.33.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>12.0</sparkle:minimumSystemVersion>
-            <sparkle:releaseNotesLink>
-        https://github.com/intitni/CodeiumForXcode/releases/tag/codeium%2F0.33.0
-      </sparkle:releaseNotesLink>
-            <enclosure url="https://github.com/intitni/CodeiumForXcode/releases/download/codeium%2F0.33.0/Codeium.for.Xcode.app.zip" length="36587953" type="application/octet-stream" sparkle:edSignature="J8GbE2YrW6kZ7W/g8oo59uOeX78wmQmq7nJOeZCZZ5ul/o3ntrYo0BoOS0Ayg7w34/RmksHqO8Tmc4phNmr7CQ=="/>
         </item>
     </channel>
 </rss>

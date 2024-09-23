@@ -109,6 +109,15 @@
       }
     },
     {
+      "identity" : "networkimage",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/gonzalezreal/NetworkImage",
+      "state" : {
+        "revision" : "7aff8d1b31148d32c5933d75557d42f6323ee3d1",
+        "version" : "6.0.0"
+      }
+    },
+    {
       "identity" : "operationplus",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/ChimeHQ/OperationPlus",
@@ -185,8 +194,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/swift-composable-architecture",
       "state" : {
-        "revision" : "1f952d8c69ace5e53bb69a218e6ed00e03a4695c",
-        "version" : "1.11.2"
+        "revision" : "433a23118f739078644ebeb4009e23d307af694a",
+        "version" : "1.10.4"
       }
     },
     {
@@ -230,8 +239,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/gonzalezreal/swift-markdown-ui",
       "state" : {
-        "revision" : "12b351a75201a8124c2f2e1f9fc6ef5cd812c0b9",
-        "version" : "2.1.0"
+        "revision" : "55441810c0f678c78ed7e2ebd46dde89228e02fc",
+        "version" : "2.4.0"
       }
     },
     {
