@@ -484,7 +484,11 @@ public extension UserDefaultPreferenceKeys {
     }
 
     var openChatMode: PreferenceKey<UserDefaultsStorageBox<OpenChatMode>> {
-        .init(defaultValue: .init(.chatPanel), key: "DefaultOpenChatMode")
+        .init(defaultValue: .init(.builtinExtension(
+            extensionIdentifier: "com.codeium",
+            id: "Codeium Chat",
+            tabName: "Codeium Chat"
+        )), key: "DefaultOpenChatMode")
     }
     
     var legacyOpenChatMode: DeprecatedPreferenceKey<OpenChatMode.LegacyOpenChatMode> {
