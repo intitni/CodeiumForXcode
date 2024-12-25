@@ -146,11 +146,11 @@ struct WidgetContextMenu: View {
                     Text("Open Chat")
                 }
                 
-                Button(action: {
-                    store.send(.openModificationButtonClicked)
-                }) {
-                    Text("Write or Modify Code")
-                }
+//                Button(action: {
+//                    store.send(.openModificationButtonClicked)
+//                }) {
+//                    Text("Write or Modify Code")
+//                }
 
                 // customCommandMenu()
             }
