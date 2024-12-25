@@ -64,6 +64,25 @@ public struct ChatModel: Codable, Equatable, Identifiable {
                 self.apiVersion = apiVersion
             }
         }
+        
+        public struct CustomHeaderInfo: Codable, Equatable {
+            public struct HeaderField: Codable, Equatable {
+                public var key: String
+                public var value: String
+                
+                public init(key: String, value: String) {
+                    self.key = key
+                    self.value = value
+                }
+            }
+            
+            @FallbackDecoding<EmptyArray>
+            public var headers: [HeaderField]
+            
+            public init(headers: [HeaderField] = []) {
+                self.headers = headers
+            }
+        }
 
         @FallbackDecoding<EmptyString>
         public var apiKeyName: String
@@ -75,6 +94,10 @@ public struct ChatModel: Codable, Equatable, Identifiable {
         public var maxTokens: Int
         @FallbackDecoding<EmptyBool>
         public var supportsFunctionCalling: Bool
+        @FallbackDecoding<EmptyBool>
+        public var supportsImage: Bool
+        @FallbackDecoding<EmptyBool>
+        public var supportsAudio: Bool
         @FallbackDecoding<EmptyString>
         public var modelName: String
 
@@ -86,6 +109,8 @@ public struct ChatModel: Codable, Equatable, Identifiable {
         public var googleGenerativeAIInfo: GoogleGenerativeAIInfo
         @FallbackDecoding<EmptyChatModelOpenAICompatibleInfo>
         public var openAICompatibleInfo: OpenAICompatibleInfo
+        @FallbackDecoding<EmptyChatModelCustomHeaderInfo>
+        public var customHeaderInfo: CustomHeaderInfo
 
         public init(
             apiKeyName: String = "",
@@ -93,22 +118,28 @@ public struct ChatModel: Codable, Equatable, Identifiable {
             isFullURL: Bool = false,
             maxTokens: Int = 4000,
             supportsFunctionCalling: Bool = true,
+            supportsImage: Bool = false,
+            supportsAudio: Bool = false,
             modelName: String = "",
             openAIInfo: OpenAIInfo = OpenAIInfo(),
             ollamaInfo: OllamaInfo = OllamaInfo(),
             googleGenerativeAIInfo: GoogleGenerativeAIInfo = GoogleGenerativeAIInfo(),
-            openAICompatibleInfo: OpenAICompatibleInfo = OpenAICompatibleInfo()
+            openAICompatibleInfo: OpenAICompatibleInfo = OpenAICompatibleInfo(),
+            customHeaderInfo: CustomHeaderInfo = CustomHeaderInfo()
         ) {
             self.apiKeyName = apiKeyName
             self.baseURL = baseURL
             self.isFullURL = isFullURL
             self.maxTokens = maxTokens
             self.supportsFunctionCalling = supportsFunctionCalling
+            self.supportsImage = supportsImage
+            self.supportsAudio = supportsAudio
             self.modelName = modelName
             self.openAIInfo = openAIInfo
             self.ollamaInfo = ollamaInfo
             self.googleGenerativeAIInfo = googleGenerativeAIInfo
             self.openAICompatibleInfo = openAICompatibleInfo
+            self.customHeaderInfo = customHeaderInfo
         }
     }
 
@@ -167,4 +198,8 @@ public struct EmptyChatModelGoogleGenerativeAIInfo: FallbackValueProvider {
 
 public struct EmptyChatModelOpenAICompatibleInfo: FallbackValueProvider {
     public static var defaultValue: ChatModel.Info.OpenAICompatibleInfo { .init() }
+}
+
+public struct EmptyChatModelCustomHeaderInfo: FallbackValueProvider {
+    public static var defaultValue: ChatModel.Info.CustomHeaderInfo { .init() }
 }
