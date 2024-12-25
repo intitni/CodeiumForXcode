@@ -1,5 +1,6 @@
 import AIModel
 import AsyncAlgorithms
+import ChatBasic
 import CodableWrappers
 import Foundation
 import Logger
@@ -7,15 +8,18 @@ import Preferences
 
 /// https://docs.anthropic.com/claude/reference/messages_post
 public actor ClaudeChatCompletionsService: ChatCompletionsStreamAPI, ChatCompletionsAPI {
+    /// https://docs.anthropic.com/en/docs/about-claude/models
     public enum KnownModel: String, CaseIterable {
-        case claude35Sonnet = "claude-3-5-sonnet-20240620"
-        case claude3Opus = "claude-3-opus-20240229"
+        case claude35Sonnet = "claude-3-5-sonnet-latest"
+        case claude35Haiku = "claude-3-5-haiku-latest"
+        case claude3Opus = "claude-3-opus-latest"
         case claude3Sonnet = "claude-3-sonnet-20240229"
         case claude3Haiku = "claude-3-haiku-20240307"
 
         public var contextWindow: Int {
             switch self {
             case .claude35Sonnet: return 200_000
+            case .claude35Haiku: return 200_000
             case .claude3Opus: return 200_000
             case .claude3Sonnet: return 200_000
             case .claude3Haiku: return 200_000
@@ -33,7 +37,7 @@ public actor ClaudeChatCompletionsService: ChatCompletionsStreamAPI, ChatComplet
         var type: String
 
         var errorDescription: String? {
-            error?.message ?? "Unknown Error"
+            error?.message ?? error?.type ?? type
         }
     }
 
@@ -56,6 +60,7 @@ public actor ClaudeChatCompletionsService: ChatCompletionsStreamAPI, ChatComplet
         var content_block: ContentBlock?
         var delta: Delta?
         var error: APIError?
+        var usage: ResponseBody.Usage?
 
         struct Message: Decodable {
             var id: String
@@ -65,7 +70,7 @@ public actor ClaudeChatCompletionsService: ChatCompletionsStreamAPI, ChatComplet
             var model: String
             var stop_reason: String?
             var stop_sequence: String?
-            var usage: Usage?
+            var usage: ResponseBody.Usage?
         }
 
         struct ContentBlock: Decodable {
@@ -74,16 +79,10 @@ public actor ClaudeChatCompletionsService: ChatCompletionsStreamAPI, ChatComplet
         }
 
         struct Delta: Decodable {
-            var type: String
+            var type: String?
             var text: String?
             var stop_reason: String?
             var stop_sequence: String?
-            var usage: Usage?
-        }
-
-        struct Usage: Decodable {
-            var input_tokens: Int?
-            var output_tokens: Int?
         }
     }
 
@@ -111,6 +110,8 @@ public actor ClaudeChatCompletionsService: ChatCompletionsStreamAPI, ChatComplet
         struct Usage: Codable, Equatable {
             var input_tokens: Int?
             var output_tokens: Int?
+            var cache_creation_input_tokens: Int?
+            var cache_read_input_tokens: Int?
         }
 
         var id: String?
@@ -124,6 +125,14 @@ public actor ClaudeChatCompletionsService: ChatCompletionsStreamAPI, ChatComplet
     }
 
     struct RequestBody: Encodable, Equatable {
+        struct CacheControl: Encodable, Equatable {
+            enum CacheControlType: String, Codable, Equatable {
+                case ephemeral
+            }
+
+            var type: CacheControlType = .ephemeral
+        }
+
         struct MessageContent: Encodable, Equatable {
             enum MessageContentType: String, Encodable, Equatable {
                 case text
@@ -141,6 +150,7 @@ public actor ClaudeChatCompletionsService: ChatCompletionsStreamAPI, ChatComplet
             var type: MessageContentType
             var text: String?
             var source: ImageSource?
+            var cache_control: CacheControl?
         }
 
         struct Message: Encodable, Equatable {
@@ -169,13 +179,26 @@ public actor ClaudeChatCompletionsService: ChatCompletionsStreamAPI, ChatComplet
             }
         }
 
+        struct SystemPrompt: Encodable, Equatable {
+            let type = "text"
+            var text: String
+            var cache_control: CacheControl?
+        }
+
+        struct Tool: Encodable, Equatable {
+            var name: String
+            var description: String
+            var input_schema: JSONSchemaValue
+        }
+
         var model: String
-        var system: String
+        var system: [SystemPrompt]
         var messages: [Message]
         var temperature: Double?
         var stream: Bool?
         var stop_sequences: [String]?
         var max_tokens: Int
+        var tools: [RequestBody.Tool]?
     }
 
     var apiKey: String
@@ -205,6 +228,7 @@ public actor ClaudeChatCompletionsService: ChatCompletionsStreamAPI, ChatComplet
         request.httpBody = try encoder.encode(requestBody)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        request.setValue("prompt-caching-2024-07-31", forHTTPHeaderField: "anthropic-beta")
         if !apiKey.isEmpty {
             request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         }
@@ -243,7 +267,13 @@ public actor ClaudeChatCompletionsService: ChatCompletionsStreamAPI, ChatComplet
                     StreamDataChunk.self,
                     from: line.data(using: .utf8) ?? Data()
                 )
+                if let error = chunk.error {
+                    throw error
+                }
                 return .init(chunk: chunk, done: chunk.type == "message_stop")
+            } catch let error as APIError {
+                Logger.service.error(error.errorDescription ?? "Unknown Error")
+                throw error
             } catch {
                 Logger.service.error("Error decoding stream data: \(error)")
                 return .init(chunk: nil, done: false)
@@ -261,6 +291,7 @@ public actor ClaudeChatCompletionsService: ChatCompletionsStreamAPI, ChatComplet
         request.httpBody = try encoder.encode(requestBody)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        request.setValue("prompt-caching-2024-07-31", forHTTPHeaderField: "anthropic-beta")
         if !apiKey.isEmpty {
             request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         }
@@ -301,13 +332,26 @@ extension ClaudeChatCompletionsService.ResponseBody {
                 }
             ),
             otherChoices: [],
-            finishReason: stop_reason ?? ""
+            finishReason: stop_reason ?? "",
+            usage: .init(
+                promptTokens: usage.input_tokens ?? 0,
+                completionTokens: usage.output_tokens ?? 0,
+                cachedTokens: usage.cache_read_input_tokens ?? 0,
+                otherUsage: {
+                    var otherUsage = [String: Int]()
+                    if let cacheCreation = usage.cache_creation_input_tokens {
+                        otherUsage["cache_creation_input_tokens"] = cacheCreation
+                    }
+                    return otherUsage
+                }()
+            )
         )
     }
 }
 
 extension ClaudeChatCompletionsService.StreamDataChunk {
     func formalized() -> ChatCompletionsStreamDataChunk {
+        let usage = usage ?? message?.usage
         return .init(
             id: message?.id,
             object: "chat.completions",
@@ -321,7 +365,19 @@ extension ClaudeChatCompletionsService.StreamDataChunk {
                 }
                 return nil
             }(),
-            finishReason: delta?.stop_reason
+            finishReason: delta?.stop_reason,
+            usage: .init(
+                promptTokens: usage?.input_tokens,
+                completionTokens: usage?.output_tokens,
+                cachedTokens: usage?.cache_read_input_tokens,
+                otherUsage: {
+                    var otherUsage = [String: Int]()
+                    if let cacheCreation = usage?.cache_creation_input_tokens {
+                        otherUsage["cache_creation_input_tokens"] = cacheCreation
+                    }
+                    return otherUsage
+                }()
+            )
         )
     }
 }
@@ -329,38 +385,121 @@ extension ClaudeChatCompletionsService.StreamDataChunk {
 extension ClaudeChatCompletionsService.RequestBody {
     init(_ body: ChatCompletionsRequestBody) {
         model = body.model
+        let prefixChecks = [
+            "claude-3-5-sonnet", "claude-3-5-haiku", "claude-3-opus", "claude-3-haiku",
+            "claude-3.5-sonnet", "claude-3.5-haiku",
+        ]
+        let supportsPromptCache = if prefixChecks.contains(where: model.hasPrefix) {
+            true
+        } else {
+            false
+        }
 
-        var systemPrompts = [String]()
+        var systemPrompts = [SystemPrompt]()
         var nonSystemMessages = [Message]()
+
+        enum JoinType {
+            case joinMessage
+            case appendToList
+            case padMessageAndAppendToList
+        }
+
+        func checkJoinType(for message: ChatCompletionsRequestBody.Message) -> JoinType {
+            guard let last = nonSystemMessages.last else { return .appendToList }
+            let newMessageRole: ClaudeChatCompletionsService.MessageRole = message.role == .user
+                ? .user
+                : .assistant
+
+            if newMessageRole != last.role {
+                return .appendToList
+            }
+
+            if message.cacheIfPossible != last.content
+                .contains(where: { $0.cache_control != nil })
+            {
+                return .padMessageAndAppendToList
+            }
+
+            return .joinMessage
+        }
+
+        /// Claude only supports caching at most 4 messages.
+        var cacheControlMax = 4
+
+        func consumeCacheControl() -> Bool {
+            if cacheControlMax > 0 {
+                cacheControlMax -= 1
+                return true
+            }
+            return false
+        }
+
+        func convertMessageContent(
+            _ message: ChatCompletionsRequestBody.Message
+        ) -> [MessageContent] {
+            var content = [MessageContent]()
+
+            content.append(.init(type: .text, text: message.content, cache_control: {
+                if message.cacheIfPossible, supportsPromptCache, consumeCacheControl() {
+                    return .init()
+                } else {
+                    return nil
+                }
+            }()))
+            for image in message.images {
+                content.append(.init(type: .image, source: .init(
+                    type: "base64",
+                    media_type: image.format.rawValue,
+                    data: image.data.base64EncodedString()
+                )))
+            }
+            
+            return content
+        }
+
+        func convertMessage(_ message: ChatCompletionsRequestBody.Message) -> Message {
+            let role: ClaudeChatCompletionsService.MessageRole = switch message.role {
+            case .system: .assistant
+            case .assistant, .tool: .assistant
+            case .user: .user
+            }
+
+            let content: [MessageContent] = convertMessageContent(message)
+
+            return .init(role: role, content: content)
+        }
 
         for message in body.messages {
             switch message.role {
             case .system:
-                systemPrompts.append(message.content)
+                systemPrompts.append(.init(text: message.content, cache_control: {
+                    if message.cacheIfPossible, supportsPromptCache, consumeCacheControl() {
+                        return .init()
+                    } else {
+                        return nil
+                    }
+                }()))
             case .tool, .assistant:
-                if let last = nonSystemMessages.last, last.role == .assistant {
-                    nonSystemMessages[nonSystemMessages.endIndex - 1].appendText(message.content)
-                } else {
-                    nonSystemMessages.append(.init(
-                        role: .assistant,
-                        content: [.init(type: .text, text: message.content)]
-                    ))
+                switch checkJoinType(for: message) {
+                case .appendToList:
+                    nonSystemMessages.append(convertMessage(message))
+                case .padMessageAndAppendToList, .joinMessage:
+                    nonSystemMessages[nonSystemMessages.endIndex - 1].content
+                        .append(contentsOf: convertMessageContent(message))
                 }
             case .user:
-                if let last = nonSystemMessages.last, last.role == .user {
-                    nonSystemMessages[nonSystemMessages.endIndex - 1].appendText(message.content)
-                } else {
-                    nonSystemMessages.append(.init(
-                        role: .user,
-                        content: [.init(type: .text, text: message.content)]
-                    ))
+                switch checkJoinType(for: message) {
+                case .appendToList:
+                    nonSystemMessages.append(convertMessage(message))
+                case .padMessageAndAppendToList, .joinMessage:
+                    nonSystemMessages[nonSystemMessages.endIndex - 1].content
+                        .append(contentsOf: convertMessageContent(message))
                 }
             }
         }
 
         messages = nonSystemMessages
-        system = systemPrompts.joined(separator: "\n\n")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        system = systemPrompts
         temperature = body.temperature
         stream = body.stream
         stop_sequences = body.stop

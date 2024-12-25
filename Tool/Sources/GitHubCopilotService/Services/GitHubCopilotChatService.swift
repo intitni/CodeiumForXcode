@@ -37,21 +37,30 @@ public final class GitHubCopilotChatService: BuiltinExtensionChatServiceType {
             languageId: editorContent?.language ?? .plaintext,
             position: editorContent?.editorContent?.cursorPosition ?? .zero
         )
-
         let request = GitHubCopilotRequest.ConversationCreate(requestBody: .init(
             workDoneToken: workDoneToken,
             turns: turns,
-            capabilities: .init(allSkills: true, skills: []),
+            capabilities: .init(allSkills: false, skills: []),
             doc: doc,
             source: .panel,
-            workspaceFolder: workspace.projectURL.path
+            workspaceFolder: workspace.projectURL.path,
+            userLanguage: {
+                let language = UserDefaults.shared.value(for: \.chatGPTLanguage)
+                if language.isEmpty {
+                    return "Auto Detected"
+                }
+                return language
+            }()
         ))
 
         let stream = AsyncThrowingStream<String, Error> { continuation in
             let startTimestamp = Date()
 
             continuation.onTermination = { _ in
-                Task { service.unregisterNotificationHandler(id: id) }
+                Task {
+                    service.unregisterNotificationHandler(id: id)
+                    await service.cancelOngoingTask(workDoneToken: workDoneToken)
+                }
             }
 
             service.registerNotificationHandler(id: id) { notification, data in
@@ -72,12 +81,20 @@ public final class GitHubCopilotChatService: BuiltinExtensionChatServiceType {
                         if let reply = progress.value.reply, progress.value.kind == "report" {
                             continuation.yield(reply)
                         } else if progress.value.kind == "end" {
-                            if let error = progress.value.error,
+                            if let error = progress.value.error?.message,
                                progress.value.cancellationReason == nil
                             {
-                                continuation.finish(
-                                    throwing: GitHubCopilotError.chatEndsWithError(error)
-                                )
+                                if error.contains("400") {
+                                    continuation.finish(
+                                        throwing: GitHubCopilotError.chatEndsWithError(
+                                            "\(error). Please try enabling pretend IDE to be VSCode and click refresh configuration."
+                                        )
+                                    )
+                                } else {
+                                    continuation.finish(
+                                        throwing: GitHubCopilotError.chatEndsWithError(error)
+                                    )
+                                }
                             } else {
                                 continuation.finish()
                             }
@@ -199,6 +216,11 @@ extension GitHubCopilotChatService {
                 var message: String
             }
 
+            struct Error: Decodable {
+                var responseIsIncomplete: Bool?
+                var message: String?
+            }
+
             var kind: String
             var title: String?
             var conversationId: String
@@ -210,7 +232,7 @@ extension GitHubCopilotChatService {
             var annotations: [String]?
             var hideText: Bool?
             var cancellationReason: String?
-            var error: String?
+            var error: Error?
         }
 
         var token: String

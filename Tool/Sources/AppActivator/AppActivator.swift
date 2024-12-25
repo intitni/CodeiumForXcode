@@ -17,13 +17,18 @@ public extension NSWorkspace {
 
             // Fallback solution
 
-            let appleScript = """
-            tell application "System Events"
-                set frontmost of the first process whose unix id is \
-            \(ProcessInfo.processInfo.processIdentifier) to true
-            end tell
-            """
-            try await runAppleScript(appleScript)
+            let axApplication = AXUIElementCreateApplication(
+                ProcessInfo.processInfo.processIdentifier
+            )
+            activateAppElement(axApplication)
+//
+//            let appleScript = """
+//            tell application "System Events"
+//                set frontmost of the first process whose unix id is \
+//            \(ProcessInfo.processInfo.processIdentifier) to true
+//            end tell
+//            """
+//            try await runAppleScript(appleScript)
         }
     }
 
@@ -32,7 +37,7 @@ public extension NSWorkspace {
             guard let app = await XcodeInspector.shared.safe.previousActiveApplication
             else { return }
             try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-            _ = app.activate()
+            activateApp(app)
         }
     }
 
@@ -40,8 +45,19 @@ public extension NSWorkspace {
         Task { @MainActor in
             guard let app = await XcodeInspector.shared.safe.latestActiveXcode else { return }
             try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-            _ = app.activate()
+            activateApp(app)
         }
+    }
+
+    static func activateApp(_ app: AppInstanceInspector) {
+        // we prefer `.activate()` because it only brings the active window to the front
+        if !app.activate() {
+            activateAppElement(app.appElement)
+        }
+    }
+
+    static func activateAppElement(_ appElement: AXUIElement) {
+        appElement.isFrontmost = true
     }
 }
 

@@ -10,6 +10,8 @@ import XcodeInspector
 
 public class CodeiumChatTab: ChatTab {
     public static var name: String { "Codeium Chat" }
+    public static var isDefaultChatTabReplacement: Bool { true }
+    public static var canHandleOpenChatCommand: Bool { true }
 
     struct RestorableState: Codable {}
 
@@ -85,7 +87,7 @@ public class CodeiumChatTab: ChatTab {
         chatTabStore.send(.updateTitle("Codeium Chat"))
         store.send(.initialize)
 
-        do {
+        Task { @MainActor in
             var previousURL: URL?
             observer.observe { [weak self] in
                 guard let self else { return }
@@ -98,11 +100,13 @@ public class CodeiumChatTab: ChatTab {
             }
         }
 
-        observer.observe { [weak self] in
-            guard let self, !store.title.isEmpty else { return }
-            let title = store.title
-            Task { @MainActor in
-                self.chatTabStore.send(.updateTitle(title))
+        Task { @MainActor in
+            observer.observe { [weak self] in
+                guard let self, !store.title.isEmpty else { return }
+                let title = store.title
+                Task { @MainActor in
+                    self.chatTabStore.send(.updateTitle(title))
+                }
             }
         }
     }
@@ -143,7 +147,7 @@ public class CodeiumChatTab: ChatTab {
         [Builder(title: "Codeium Chat")]
     }
 
-	public static func defaultChatBuilder() -> ChatTabBuilder {
+    public static func defaultChatBuilder() -> ChatTabBuilder {
         Builder(title: "Codeium Chat")
     }
 }

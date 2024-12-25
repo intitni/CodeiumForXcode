@@ -1,6 +1,8 @@
+import Client
 import Preferences
 import SharedUIComponents
 import SwiftUI
+import XPCShared
 
 #if canImport(ProHostApp)
 import ProHostApp
@@ -33,7 +35,51 @@ struct ChatSettingsGeneralSectionView: View {
         @AppStorage(\.openChatInBrowserURL) var openChatInBrowserURL
         @AppStorage(\.openChatInBrowserInInAppBrowser) var openChatInBrowserInInAppBrowser
 
-        init() {}
+        var refreshExtensionExtensionOpenChatHandlerTask: Task<Void, Never>?
+
+        @MainActor
+        @Published
+        var openChatOptions = [OpenChatMode]()
+
+        init() {
+            Task { @MainActor in
+                refreshExtensionOpenChatHandlers()
+            }
+            refreshExtensionExtensionOpenChatHandlerTask = Task { [weak self] in
+                let sequence = NotificationCenter.default
+                    .notifications(named: NSApplication.didBecomeActiveNotification)
+                for await _ in sequence {
+                    guard let self else { return }
+                    await MainActor.run {
+                        self.refreshExtensionOpenChatHandlers()
+                    }
+                }
+            }
+        }
+
+        @MainActor
+        func refreshExtensionOpenChatHandlers() {
+            guard let service = try? getService() else { return }
+            Task { @MainActor in
+                let handlers = try await service
+                    .send(requestBody: ExtensionServiceRequests.GetExtensionOpenChatHandlers())
+                openChatOptions = handlers.map {
+                    if $0.isBuiltIn {
+                        return .builtinExtension(
+                            extensionIdentifier: $0.bundleIdentifier,
+                            id: $0.id,
+                            tabName: $0.tabName
+                        )
+                    } else {
+                        return .externalExtension(
+                            extensionIdentifier: $0.bundleIdentifier,
+                            id: $0.id,
+                            tabName: $0.tabName
+                        )
+                    }
+                }
+            }
+        }
     }
 
     @Environment(\.openURL) var openURL
@@ -72,7 +118,7 @@ struct ChatSettingsGeneralSectionView: View {
 //                }
 //            }
 
-            if settings.openChatMode == .browser {
+            if settings.openChatMode.value == .browser {
                 TextField(
                     "Chat web page URL",
                     text: $settings.openChatInBrowserURL,
@@ -103,7 +149,7 @@ struct ChatSettingsGeneralSectionView: View {
             ) {
                 let allModels = settings.chatModels + [.init(
                     id: "com.github.copilot",
-                    name: "GitHub Copilot (poc)",
+                    name: "GitHub Copilot as chat model",
                     format: .openAI,
                     info: .init()
                 )]
@@ -200,10 +246,19 @@ struct ChatSettingsGeneralSectionView: View {
                 Text("7 Messages").tag(7)
                 Text("9 Messages").tag(9)
                 Text("11 Messages").tag(11)
+                Text("21 Messages").tag(21)
+                Text("31 Messages").tag(31)
+                Text("41 Messages").tag(41)
+                Text("51 Messages").tag(51)
+                Text("71 Messages").tag(71)
+                Text("91 Messages").tag(91)
+                Text("111 Messages").tag(111)
+                Text("151 Messages").tag(151)
+                Text("201 Messages").tag(201)
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Default system prompt")
+                Text("Additional system prompt")
                 EditableText(text: $settings.defaultChatSystemPrompt)
                     .lineLimit(6)
             }

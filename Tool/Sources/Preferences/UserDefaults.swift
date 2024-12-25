@@ -12,9 +12,16 @@ public extension UserDefaults {
     static var shared = UserDefaults(suiteName: userDefaultSuiteName)!
 
     static func setupDefaultSettings() {
-        shared.set(.codeiumChat, for: \.openChatMode)
+        shared.set(
+            .init(.builtinExtension(
+                extensionIdentifier: "com.codeium",
+                id: "Codeium Chat",
+                tabName: "Codeium Chat"
+            )),
+            for: \.openChatMode
+        )
         shared.set(.builtIn(.codeium), for: \.suggestionFeatureProvider)
-        
+
         shared.setupDefaultValue(for: \.quitXPCServiceOnXcodeAndAppQuit)
         shared.setupDefaultValue(for: \.realtimeSuggestionToggle)
         shared.setupDefaultValue(for: \.realtimeSuggestionDebounce)
@@ -54,6 +61,21 @@ public extension UserDefaults {
                 weight: .regular
             )))
         )
+        shared.setupDefaultValue(
+            for: \.openChatMode,
+            defaultValue: {
+                switch shared.deprecatedValue(for: \.legacyOpenChatMode) {
+                case .chatPanel: return .init(.chatPanel)
+                case .browser: return .init(.browser)
+                case .codeiumChat:
+                    return .init(.builtinExtension(
+                        extensionIdentifier: "com.codeium",
+                        id: "Codeium Chat",
+                        tabName: "Codeium Chat"
+                    ))
+                }
+            }()
+        )
     }
 }
 
@@ -68,7 +90,7 @@ extension String: UserDefaultsStorable {}
 extension Data: UserDefaultsStorable {}
 extension URL: UserDefaultsStorable {}
 
-extension Array: RawRepresentable where Element: Codable {
+extension Array: @retroactive RawRepresentable where Element: Codable {
     public init?(rawValue: String) {
         guard let data = rawValue.data(using: .utf8),
               let result = try? JSONDecoder().decode([Element].self, from: data)
