@@ -29,6 +29,8 @@ struct ChatModelEditView: View {
                             OllamaForm(store: store)
                         case .claude:
                             ClaudeForm(store: store)
+                        case .gitHubCopilot:
+                            GitHubCopilotForm(store: store)
                         }
                     }
                     .padding()
@@ -47,6 +49,25 @@ struct ChatModelEditView: View {
                                     .controlSize(.small)
                             }
                         }
+                        
+                        CustomBodyEdit(store: store)
+                            .disabled({
+                                switch store.format {
+                                case .openAI, .openAICompatible, .claude:
+                                    return false
+                                default:
+                                    return true
+                                }
+                            }())
+                        CustomHeaderEdit(store: store)
+                            .disabled({
+                                switch store.format {
+                                case .openAI, .openAICompatible, .ollama, .gitHubCopilot, .claude:
+                                    return false
+                                default:
+                                    return true
+                                }
+                            }())
 
                         Spacer()
 
@@ -86,31 +107,44 @@ struct ChatModelEditView: View {
         var body: some View {
             WithPerceptionTracking {
                 Picker(
-                    selection: $store.format,
+                    selection: Binding(
+                        get: { .init(store.format) },
+                        set: { store.send(.selectModelFormat($0)) }
+                    ),
                     content: {
                         ForEach(
-                            ChatModel.Format.allCases,
-                            id: \.rawValue
+                            ChatModelEdit.ModelFormat.allCases,
+                            id: \.self
                         ) { format in
                             switch format {
                             case .openAI:
-                                Text("OpenAI").tag(format)
+                                Text("OpenAI")
                             case .azureOpenAI:
-                                Text("Azure OpenAI").tag(format)
+                                Text("Azure OpenAI")
                             case .openAICompatible:
-                                Text("OpenAI Compatible").tag(format)
+                                Text("OpenAI Compatible")
                             case .googleAI:
-                                Text("Google Generative AI").tag(format)
+                                Text("Google AI")
                             case .ollama:
-                                Text("Ollama").tag(format)
+                                Text("Ollama")
                             case .claude:
-                                Text("Claude").tag(format)
+                                Text("Claude")
+                            case .gitHubCopilot:
+                                Text("GitHub Copilot")
+                            case .deepSeekOpenAICompatible:
+                                Text("DeepSeek (OpenAI Compatible)")
+                            case .openRouterOpenAICompatible:
+                                Text("OpenRouter (OpenAI Compatible)")
+                            case .grokOpenAICompatible:
+                                Text("Grok (OpenAI Compatible)")
+                            case .mistralOpenAICompatible:
+                                Text("Mistral (OpenAI Compatible)")
                             }
                         }
                     },
                     label: { Text("Format") }
                 )
-                .pickerStyle(.segmented)
+                .pickerStyle(.menu)
             }
         }
     }
@@ -215,6 +249,79 @@ struct ChatModelEditView: View {
         }
     }
 
+    struct CustomBodyEdit: View {
+        @Perception.Bindable var store: StoreOf<ChatModelEdit>
+        @State private var isEditing = false
+        @Dependency(\.namespacedToast) var toast
+
+        var body: some View {
+            Button("Custom Body") {
+                isEditing = true
+            }
+            .sheet(isPresented: $isEditing) {
+                WithPerceptionTracking {
+                    VStack {
+                        TextEditor(text: $store.customBody)
+                            .font(Font.system(.body, design: .monospaced))
+                            .padding(4)
+                            .frame(minHeight: 120)
+                            .multilineTextAlignment(.leading)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                            )
+                            .handleToast(namespace: "CustomBodyEdit")
+
+                        Text(
+                            "The custom body will be added to the request body. Please use it to add parameters that are not yet available in the form. It should be a valid JSON object."
+                        )
+                        .foregroundColor(.secondary)
+                        .font(.callout)
+                        .padding(.bottom)
+
+                        Button(action: {
+                            if store.customBody.trimmingCharacters(in: .whitespacesAndNewlines)
+                                .isEmpty
+                            {
+                                isEditing = false
+                                return
+                            }
+                            guard let _ = try? JSONSerialization
+                                .jsonObject(with: store.customBody.data(using: .utf8) ?? Data())
+                            else {
+                                toast("Invalid JSON object", .error, "CustomBodyEdit")
+                                return
+                            }
+                            isEditing = false
+                        }) {
+                            Text("Done")
+                        }
+                        .keyboardShortcut(.defaultAction)
+                    }
+                    .padding()
+                    .frame(width: 600, height: 500)
+                    .background(Color(nsColor: .windowBackgroundColor))
+                }
+            }
+        }
+    }
+
+    struct CustomHeaderEdit: View {
+        @Perception.Bindable var store: StoreOf<ChatModelEdit>
+        @State private var isEditing = false
+
+        var body: some View {
+            Button("Custom Headers") {
+                isEditing = true
+            }
+            .sheet(isPresented: $isEditing) {
+                WithPerceptionTracking {
+                    CustomHeaderSettingsView(headers: $store.customHeaders)
+                }
+            }
+        }
+    }
+
     struct OpenAIForm: View {
         @Perception.Bindable var store: StoreOf<ChatModelEdit>
         var body: some View {
@@ -243,7 +350,7 @@ struct ChatModelEditView: View {
 
                 MaxTokensTextField(store: store)
                 SupportsFunctionCallingToggle(store: store)
-                
+
                 TextField(text: $store.openAIOrganizationID, prompt: Text("Optional")) {
                     Text("Organization ID")
                 }
@@ -285,7 +392,6 @@ struct ChatModelEditView: View {
 
     struct OpenAICompatibleForm: View {
         @Perception.Bindable var store: StoreOf<ChatModelEdit>
-        @State var isEditingCustomHeader = false
 
         var body: some View {
             WithPerceptionTracking {
@@ -321,12 +427,14 @@ struct ChatModelEditView: View {
                 Toggle(isOn: $store.enforceMessageOrder) {
                     Text("Enforce message order to be user/assistant alternated")
                 }
-                
-                Button("Custom Headers") {
-                    isEditingCustomHeader.toggle()
+
+                Toggle(isOn: $store.openAICompatibleSupportsMultipartMessageContent) {
+                    Text("Support multi-part message content")
                 }
-            }.sheet(isPresented: $isEditingCustomHeader) {
-                CustomHeaderSettingsView(headers: $store.customHeaders)
+
+                Toggle(isOn: $store.requiresBeginWithUserMessage) {
+                    Text("Requires the first message to be from the user")
+                }
             }
         }
     }
@@ -371,11 +479,14 @@ struct ChatModelEditView: View {
 
     struct OllamaForm: View {
         @Perception.Bindable var store: StoreOf<ChatModelEdit>
+
         var body: some View {
             WithPerceptionTracking {
                 BaseURLTextField(store: store, prompt: Text("http://127.0.0.1:11434")) {
                     Text("/api/chat")
                 }
+
+                ApiKeyNamePicker(store: store)
 
                 TextField("Model Name", text: $store.modelName)
 
@@ -384,7 +495,7 @@ struct ChatModelEditView: View {
                 TextField(text: $store.ollamaKeepAlive, prompt: Text("Default Value")) {
                     Text("Keep Alive")
                 }
-
+                
                 VStack(alignment: .leading, spacing: 8) {
                     Text(Image(systemName: "exclamationmark.triangle.fill")) + Text(
                         " For more details, please visit [https://ollama.com](https://ollama.com)."
@@ -434,6 +545,54 @@ struct ChatModelEditView: View {
                         " For more details, please visit [https://anthropic.com](https://anthropic.com)."
                     )
                 }
+                .padding(.vertical)
+            }
+        }
+    }
+
+    struct GitHubCopilotForm: View {
+        @Perception.Bindable var store: StoreOf<ChatModelEdit>
+
+        var body: some View {
+            WithPerceptionTracking {
+                TextField("Model Name", text: $store.modelName)
+                    .overlay(alignment: .trailing) {
+                        Picker(
+                            "",
+                            selection: $store.modelName,
+                            content: {
+                                if AvailableGitHubCopilotModel(rawValue: store.modelName) == nil {
+                                    Text("Custom Model").tag(store.modelName)
+                                }
+                                ForEach(AvailableGitHubCopilotModel.allCases, id: \.self) { model in
+                                    Text(model.rawValue).tag(model.rawValue)
+                                }
+                            }
+                        )
+                        .frame(width: 20)
+                    }
+
+                MaxTokensTextField(store: store)
+                SupportsFunctionCallingToggle(store: store)
+
+                Toggle(isOn: $store.enforceMessageOrder) {
+                    Text("Enforce message order to be user/assistant alternated")
+                }
+
+                Toggle(isOn: $store.openAICompatibleSupportsMultipartMessageContent) {
+                    Text("Support multi-part message content")
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(Image(systemName: "exclamationmark.triangle.fill")) + Text(
+                        " Please login in the GitHub Copilot settings to use the model."
+                    )
+
+                    Text(Image(systemName: "exclamationmark.triangle.fill")) + Text(
+                        " This will call the APIs directly, which may not be allowed by GitHub. But it's used in other popular apps like Zed."
+                    )
+                }
+                .dynamicHeightTextInFormWorkaround()
                 .padding(.vertical)
             }
         }

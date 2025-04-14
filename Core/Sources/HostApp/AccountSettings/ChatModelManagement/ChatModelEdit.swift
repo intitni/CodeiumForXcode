@@ -32,6 +32,9 @@ struct ChatModelEdit {
         var openAIOrganizationID: String = ""
         var openAIProjectID: String = ""
         var customHeaders: [ChatModel.Info.CustomHeaderInfo.HeaderField] = []
+        var openAICompatibleSupportsMultipartMessageContent = true
+        var requiresBeginWithUserMessage = false
+        var customBody: String = ""
     }
 
     enum Action: Equatable, BindableAction {
@@ -44,8 +47,42 @@ struct ChatModelEdit {
         case testSucceeded(String)
         case testFailed(String)
         case checkSuggestedMaxTokens
+        case selectModelFormat(ModelFormat)
         case apiKeySelection(APIKeySelection.Action)
         case baseURLSelection(BaseURLSelection.Action)
+    }
+
+    enum ModelFormat: CaseIterable {
+        case openAI
+        case azureOpenAI
+        case googleAI
+        case ollama
+        case claude
+        case gitHubCopilot
+        case openAICompatible
+        case deepSeekOpenAICompatible
+        case openRouterOpenAICompatible
+        case grokOpenAICompatible
+        case mistralOpenAICompatible
+
+        init(_ format: ChatModel.Format) {
+            switch format {
+            case .openAI:
+                self = .openAI
+            case .azureOpenAI:
+                self = .azureOpenAI
+            case .googleAI:
+                self = .googleAI
+            case .ollama:
+                self = .ollama
+            case .claude:
+                self = .claude
+            case .openAICompatible:
+                self = .openAICompatible
+            case .gitHubCopilot:
+                self = .gitHubCopilot
+            }
+        }
     }
 
     var toast: (String, ToastType) -> Void {
@@ -88,21 +125,33 @@ struct ChatModelEdit {
                 let model = ChatModel(state: state)
                 return .run { send in
                     do {
-                        let service = LegacyChatGPTService(
-                            configuration: UserPreferenceChatGPTConfiguration()
-                                .overriding {
-                                    $0.model = model
-                                }
-                        )
-                        let reply = try await service
-                            .sendAndWait(content: "Respond with \"Test succeeded\"")
-                        await send(.testSucceeded(reply ?? "No Message"))
-                        let stream = try await service
-                            .send(content: "Respond with \"Stream response is working\"")
-                        var streamReply = ""
-                        for try await chunk in stream {
-                            streamReply += chunk
+                        let configuration = UserPreferenceChatGPTConfiguration().overriding {
+                            $0.model = model
                         }
+                        let service = ChatGPTService(configuration: configuration)
+                        let stream = service.send(TemplateChatGPTMemory(
+                            memoryTemplate: .init(messages: [
+                                .init(chatMessage: .init(
+                                    role: .system,
+                                    content: "You are a bot. Just do what is told."
+                                )),
+                                .init(chatMessage: .init(
+                                    role: .assistant,
+                                    content: "Hello"
+                                )),
+                                .init(chatMessage: .init(
+                                    role: .user,
+                                    content: "Respond with \"Test succeeded.\""
+                                )),
+                                .init(chatMessage: .init(
+                                    role: .user,
+                                    content: "Respond with \"Test succeeded.\""
+                                )),
+                            ]),
+                            configuration: configuration,
+                            functionProvider: NoChatGPTFunctionProvider()
+                        ))
+                        let streamReply = try await stream.asText()
                         await send(.testSucceeded(streamReply))
                     } catch {
                         await send(.testFailed(error.localizedDescription))
@@ -151,10 +200,52 @@ struct ChatModelEdit {
                         state.suggestedMaxTokens = nil
                     }
                     return .none
+                case .gitHubCopilot:
+                    if let knownModel = AvailableGitHubCopilotModel(rawValue: state.modelName) {
+                        state.suggestedMaxTokens = knownModel.contextWindow
+                    } else {
+                        state.suggestedMaxTokens = nil
+                    }
+                    return .none
                 default:
                     state.suggestedMaxTokens = nil
                     return .none
                 }
+
+            case let .selectModelFormat(format):
+                switch format {
+                case .openAI:
+                    state.format = .openAI
+                case .azureOpenAI:
+                    state.format = .azureOpenAI
+                case .googleAI:
+                    state.format = .googleAI
+                case .ollama:
+                    state.format = .ollama
+                case .claude:
+                    state.format = .claude
+                case .gitHubCopilot:
+                    state.format = .gitHubCopilot
+                case .openAICompatible:
+                    state.format = .openAICompatible
+                case .deepSeekOpenAICompatible:
+                    state.format = .openAICompatible
+                    state.baseURLSelection.baseURL = "https://api.deepseek.com"
+                    state.baseURLSelection.isFullURL = false
+                case .openRouterOpenAICompatible:
+                    state.format = .openAICompatible
+                    state.baseURLSelection.baseURL = "https://openrouter.ai"
+                    state.baseURLSelection.isFullURL = false
+                case .grokOpenAICompatible:
+                    state.format = .openAICompatible
+                    state.baseURLSelection.baseURL = "https://api.x.ai"
+                    state.baseURLSelection.isFullURL = false
+                case .mistralOpenAICompatible:
+                    state.format = .openAICompatible
+                    state.baseURLSelection.baseURL = "https://api.mistral.ai"
+                    state.baseURLSelection.isFullURL = false
+                }
+                return .none
 
             case .apiKeySelection:
                 return .none
@@ -195,7 +286,7 @@ extension ChatModel {
                     switch state.format {
                     case .googleAI, .ollama, .claude:
                         return false
-                    case .azureOpenAI, .openAI, .openAICompatible:
+                    case .azureOpenAI, .openAI, .openAICompatible, .gitHubCopilot:
                         return state.supportsFunctionCalling
                     }
                 }(),
@@ -206,8 +297,14 @@ extension ChatModel {
                 ),
                 ollamaInfo: .init(keepAlive: state.ollamaKeepAlive),
                 googleGenerativeAIInfo: .init(apiVersion: state.apiVersion),
-                openAICompatibleInfo: .init(enforceMessageOrder: state.enforceMessageOrder),
-                customHeaderInfo: .init(headers: state.customHeaders)
+                openAICompatibleInfo: .init(
+                    enforceMessageOrder: state.enforceMessageOrder,
+                    supportsMultipartMessageContent: state
+                        .openAICompatibleSupportsMultipartMessageContent,
+                    requiresBeginWithUserMessage: state.requiresBeginWithUserMessage
+                ),
+                customHeaderInfo: .init(headers: state.customHeaders),
+                customBodyInfo: .init(jsonBody: state.customBody)
             )
         )
     }
@@ -230,7 +327,11 @@ extension ChatModel {
             enforceMessageOrder: info.openAICompatibleInfo.enforceMessageOrder,
             openAIOrganizationID: info.openAIInfo.organizationID,
             openAIProjectID: info.openAIInfo.projectID,
-            customHeaders: info.customHeaderInfo.headers
+            customHeaders: info.customHeaderInfo.headers,
+            openAICompatibleSupportsMultipartMessageContent: info.openAICompatibleInfo
+                .supportsMultipartMessageContent,
+            requiresBeginWithUserMessage: info.openAICompatibleInfo.requiresBeginWithUserMessage,
+            customBody: info.customBodyInfo.jsonBody
         )
     }
 }

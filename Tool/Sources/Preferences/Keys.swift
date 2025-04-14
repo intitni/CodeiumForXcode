@@ -591,7 +591,9 @@ public extension UserDefaultPreferenceKeys {
                     extraSystemPrompt: "",
                     prompt: "Explain the selected code concisely, step-by-step.",
                     useExtraSystemPrompt: true
-                )
+                ),
+                ignoreExistingAttachments: false,
+                attachments: []
             ),
             .init(
                 commandId: "BuiltInCustomCommandAddDocumentationToSelection",
@@ -601,7 +603,9 @@ public extension UserDefaultPreferenceKeys {
                     prompt: "Add documentation on top of the code. Use triple slash if the language supports it.",
                     continuousMode: false,
                     generateDescription: true
-                )
+                ),
+                ignoreExistingAttachments: false,
+                attachments: []
             ),
             .init(
                 commandId: "BuiltInCustomCommandSendCodeToChat",
@@ -614,7 +618,9 @@ public extension UserDefaultPreferenceKeys {
                     ```
                     """,
                     useExtraSystemPrompt: true
-                )
+                ),
+                ignoreExistingAttachments: false,
+                attachments: []
             ),
         ], key: "CustomCommands")
     }

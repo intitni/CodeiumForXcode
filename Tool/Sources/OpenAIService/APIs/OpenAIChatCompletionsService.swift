@@ -2,6 +2,7 @@ import AIModel
 import AsyncAlgorithms
 import ChatBasic
 import Foundation
+import JoinJSON
 import Logger
 import Preferences
 
@@ -100,6 +101,8 @@ actor OpenAIChatCompletionsService: ChatCompletionsStreamAPI, ChatCompletionsAPI
             struct Delta: Codable {
                 var role: MessageRole?
                 var content: String?
+                var reasoning_content: String?
+                var reasoning: String?
                 var function_call: RequestBody.MessageFunctionCall?
                 var tool_calls: [RequestBody.MessageToolCall]?
             }
@@ -112,6 +115,8 @@ actor OpenAIChatCompletionsService: ChatCompletionsStreamAPI, ChatCompletionsAPI
             var role: MessageRole
             /// The content of the message.
             var content: String?
+            var reasoning_content: String?
+            var reasoning: String?
             /// When we want to reply to a function call with the result, we have to provide the
             /// name of the function call, and include the result in `content`.
             ///
@@ -286,12 +291,14 @@ actor OpenAIChatCompletionsService: ChatCompletionsStreamAPI, ChatCompletionsAPI
     var endpoint: URL
     var requestBody: RequestBody
     var model: ChatModel
+    let requestModifier: ((inout URLRequest) -> Void)?
 
     init(
         apiKey: String,
         model: ChatModel,
         endpoint: URL,
-        requestBody: ChatCompletionsRequestBody
+        requestBody: ChatCompletionsRequestBody,
+        requestModifier: ((inout URLRequest) -> Void)? = nil
     ) {
         self.apiKey = apiKey
         self.endpoint = endpoint
@@ -299,11 +306,34 @@ actor OpenAIChatCompletionsService: ChatCompletionsStreamAPI, ChatCompletionsAPI
             requestBody,
             endpoint: endpoint,
             enforceMessageOrder: model.info.openAICompatibleInfo.enforceMessageOrder,
+            supportsMultipartMessageContent: model.info.openAICompatibleInfo
+                .supportsMultipartMessageContent,
+            requiresBeginWithUserMessage: model.info.openAICompatibleInfo
+                .requiresBeginWithUserMessage,
             canUseTool: model.info.supportsFunctionCalling,
             supportsImage: model.info.supportsImage,
-            supportsAudio: model.info.supportsAudio
+            supportsAudio: model.info.supportsAudio,
+            supportsTemperature: {
+                guard model.format == .openAI else { return true }
+                if let chatGPTModel = ChatGPTModel(rawValue: model.info.modelName) {
+                    return chatGPTModel.supportsTemperature
+                } else if model.info.modelName.hasPrefix("o") {
+                    return false
+                }
+                return true
+            }(),
+            supportsSystemPrompt: {
+                guard model.format == .openAI else { return true }
+                if let chatGPTModel = ChatGPTModel(rawValue: model.info.modelName) {
+                    return chatGPTModel.supportsSystemPrompt
+                } else if model.info.modelName.hasPrefix("o") {
+                    return false
+                }
+                return true
+            }()
         )
         self.model = model
+        self.requestModifier = requestModifier
     }
 
     func callAsFunction() async throws
@@ -316,9 +346,11 @@ actor OpenAIChatCompletionsService: ChatCompletionsStreamAPI, ChatCompletionsAPI
         request.httpBody = try encoder.encode(requestBody)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        Self.setupCustomBody(&request, model: model)
         Self.setupAppInformation(&request)
         Self.setupAPIKey(&request, model: model, apiKey: apiKey)
-        Self.setupExtraHeaderFields(&request, model: model)
+        await Self.setupExtraHeaderFields(&request, model: model, apiKey: apiKey)
+        requestModifier?(&request)
 
         let (result, response) = try await URLSession.shared.bytes(for: request)
         guard let response = response as? HTTPURLResponse else {
@@ -336,7 +368,10 @@ actor OpenAIChatCompletionsService: ChatCompletionsStreamAPI, ChatCompletionsAPI
             }
             let decoder = JSONDecoder()
             let error = try? decoder.decode(CompletionAPIError.self, from: data)
-            throw error ?? ChatGPTServiceError.responseInvalid
+            throw error ?? ChatGPTServiceError.otherError(
+                text +
+                    "\n\nPlease check your model settings, some capabilities may not be supported by the model."
+            )
         }
 
         let stream = ResponseStream<StreamDataChunk>(result: result) {
@@ -451,6 +486,8 @@ actor OpenAIChatCompletionsService: ChatCompletionsStreamAPI, ChatCompletionsAPI
                 request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
             case .azureOpenAI:
                 request.setValue(apiKey, forHTTPHeaderField: "api-key")
+            case .gitHubCopilot:
+                break
             case .googleAI:
                 assertionFailure("Unsupported")
             case .ollama:
@@ -461,10 +498,20 @@ actor OpenAIChatCompletionsService: ChatCompletionsStreamAPI, ChatCompletionsAPI
         }
     }
 
-    static func setupExtraHeaderFields(_ request: inout URLRequest, model: ChatModel) {
-        for field in model.info.customHeaderInfo.headers where !field.key.isEmpty {
-            request.setValue(field.value, forHTTPHeaderField: field.key)
+    static func setupCustomBody(_ request: inout URLRequest, model: ChatModel) {
+        switch model.format {
+        case .openAI, .openAICompatible:
+            break
+        default:
+            return
         }
+        
+        let join = JoinJSON()
+        let jsonBody = model.info.customBodyInfo.jsonBody
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let data = request.httpBody, !jsonBody.isEmpty else { return }
+        let newBody = join.join(data, with: jsonBody)
+        request.httpBody = newBody
     }
 }
 
@@ -477,6 +524,7 @@ extension OpenAIChatCompletionsService.ResponseBody {
             .init(
                 role: message.role.formalized,
                 content: message.content ?? "",
+                reasoningContent: message.reasoning_content ?? message.reasoning ?? "",
                 toolCalls: {
                     if let toolCalls = message.tool_calls {
                         return toolCalls.map { toolCall in
@@ -548,6 +596,8 @@ extension OpenAIChatCompletionsService.StreamDataChunk {
                     return .init(
                         role: choice.delta?.role?.formalized,
                         content: choice.delta?.content,
+                        reasoningContent: choice.delta?.reasoning_content
+                            ?? choice.delta?.reasoning,
                         toolCalls: {
                             if let toolCalls = choice.delta?.tool_calls {
                                 return toolCalls.map {
@@ -651,25 +701,43 @@ extension OpenAIChatCompletionsService.RequestBody {
         _ message: inout Message,
         content: String,
         images: [ChatCompletionsRequestBody.Message.Image],
-        audios: [ChatCompletionsRequestBody.Message.Audio]
+        audios: [ChatCompletionsRequestBody.Message.Audio],
+        supportsMultipartMessageContent: Bool
     ) {
-        switch message.role {
-        case .system, .assistant, .user:
-            let newParts = Self.convertContentPart(
-                content: content,
-                images: images,
-                audios: audios
-            )
-            if case let .contentParts(existingParts) = message.content {
-                message.content = .contentParts(existingParts + newParts)
-            } else {
-                message.content = .contentParts(newParts)
+        if supportsMultipartMessageContent {
+            switch message.role {
+            case .system, .assistant, .user:
+                let newParts = Self.convertContentPart(
+                    content: content,
+                    images: images,
+                    audios: audios
+                )
+                if case let .contentParts(existingParts) = message.content {
+                    message.content = .contentParts(existingParts + newParts)
+                } else {
+                    message.content = .contentParts(newParts)
+                }
+            case .tool, .function:
+                if case let .text(existingText) = message.content {
+                    message.content = .text(existingText + "\n\n" + content)
+                } else {
+                    message.content = .text(content)
+                }
             }
-        case .tool, .function:
-            if case let .text(existingText) = message.content {
-                message.content = .text(existingText + "\n\n" + content)
-            } else {
-                message.content = .text(content)
+        } else {
+            switch message.role {
+            case .system, .assistant, .user:
+                if case let .text(existingText) = message.content {
+                    message.content = .text(existingText + "\n\n" + content)
+                } else {
+                    message.content = .text(content)
+                }
+            case .tool, .function:
+                if case let .text(existingText) = message.content {
+                    message.content = .text(existingText + "\n\n" + content)
+                } else {
+                    message.content = .text(content)
+                }
             }
         }
     }
@@ -678,9 +746,13 @@ extension OpenAIChatCompletionsService.RequestBody {
         _ body: ChatCompletionsRequestBody,
         endpoint: URL,
         enforceMessageOrder: Bool,
+        supportsMultipartMessageContent: Bool,
+        requiresBeginWithUserMessage: Bool,
         canUseTool: Bool,
         supportsImage: Bool,
-        supportsAudio: Bool
+        supportsAudio: Bool,
+        supportsTemperature: Bool,
+        supportsSystemPrompt: Bool
     ) {
         temperature = body.temperature
         stream = body.stream
@@ -701,10 +773,32 @@ extension OpenAIChatCompletionsService.RequestBody {
 
         model = body.model
 
+        var body = body
+
+        if !supportsTemperature {
+            temperature = nil
+        }
+        if !supportsSystemPrompt {
+            for (index, message) in body.messages.enumerated() {
+                if message.role == .system {
+                    body.messages[index].role = .user
+                }
+            }
+        }
+
+        if requiresBeginWithUserMessage {
+            let firstUserIndex = body.messages.firstIndex(where: { $0.role == .user }) ?? 0
+            let endIndex = firstUserIndex
+            for i in stride(from: endIndex - 1, to: 0, by: -1)
+                where i >= 0 && body.messages.endIndex > i
+            {
+                body.messages.remove(at: i)
+            }
+        }
+
         // Special case for Claude through OpenRouter
-        
+
         if endpoint.absoluteString.contains("openrouter.ai"), model.hasPrefix("anthropic/") {
-            var body = body
             body.model = model.replacingOccurrences(of: "anthropic/", with: "")
             let claudeRequestBody = ClaudeChatCompletionsService.RequestBody(body)
             messages = claudeRequestBody.system.map {
@@ -731,7 +825,7 @@ extension OpenAIChatCompletionsService.RequestBody {
             }
             return
         }
-        
+
         // Enforce message order
 
         if enforceMessageOrder {
@@ -752,16 +846,22 @@ extension OpenAIChatCompletionsService.RequestBody {
                             &nonSystemMessages[nonSystemMessages.endIndex - 1],
                             content: message.content,
                             images: supportsImage ? message.images : [],
-                            audios: supportsAudio ? message.audios : []
+                            audios: supportsAudio ? message.audios : [],
+                            supportsMultipartMessageContent: supportsMultipartMessageContent
                         )
                     } else {
                         nonSystemMessages.append(.init(
                             role: .tool,
-                            content: .contentParts(Self.convertContentPart(
-                                content: message.content,
-                                images: supportsImage ? message.images : [],
-                                audios: supportsAudio ? message.audios : []
-                            )),
+                            content: {
+                                if supportsMultipartMessageContent {
+                                    return .contentParts(Self.convertContentPart(
+                                        content: message.content,
+                                        images: supportsImage ? message.images : [],
+                                        audios: supportsAudio ? message.audios : []
+                                    ))
+                                }
+                                return .text(message.content)
+                            }(),
                             tool_calls: message.toolCalls?.map { tool in
                                 MessageToolCall(
                                     id: tool.id,
@@ -780,16 +880,22 @@ extension OpenAIChatCompletionsService.RequestBody {
                             &nonSystemMessages[nonSystemMessages.endIndex - 1],
                             content: message.content,
                             images: supportsImage ? message.images : [],
-                            audios: supportsAudio ? message.audios : []
+                            audios: supportsAudio ? message.audios : [],
+                            supportsMultipartMessageContent: supportsMultipartMessageContent
                         )
                     } else {
                         nonSystemMessages.append(.init(
                             role: .assistant,
-                            content: .contentParts(Self.convertContentPart(
-                                content: message.content,
-                                images: supportsImage ? message.images : [],
-                                audios: supportsAudio ? message.audios : []
-                            ))
+                            content: {
+                                if supportsMultipartMessageContent {
+                                    return .contentParts(Self.convertContentPart(
+                                        content: message.content,
+                                        images: supportsImage ? message.images : [],
+                                        audios: supportsAudio ? message.audios : []
+                                    ))
+                                }
+                                return .text(message.content)
+                            }()
                         ))
                     }
                 case (.user, _):
@@ -798,16 +904,22 @@ extension OpenAIChatCompletionsService.RequestBody {
                             &nonSystemMessages[nonSystemMessages.endIndex - 1],
                             content: message.content,
                             images: supportsImage ? message.images : [],
-                            audios: supportsAudio ? message.audios : []
+                            audios: supportsAudio ? message.audios : [],
+                            supportsMultipartMessageContent: supportsMultipartMessageContent
                         )
                     } else {
                         nonSystemMessages.append(.init(
                             role: .user,
-                            content: .contentParts(Self.convertContentPart(
-                                content: message.content,
-                                images: supportsImage ? message.images : [],
-                                audios: supportsAudio ? message.audios : []
-                            )),
+                            content: {
+                                if supportsMultipartMessageContent {
+                                    return .contentParts(Self.convertContentPart(
+                                        content: message.content,
+                                        images: supportsImage ? message.images : [],
+                                        audios: supportsAudio ? message.audios : []
+                                    ))
+                                }
+                                return .text(message.content)
+                            }(),
                             name: message.name,
                             tool_call_id: message.toolCallId
                         ))
@@ -817,15 +929,25 @@ extension OpenAIChatCompletionsService.RequestBody {
             messages = [
                 .init(
                     role: .system,
-                    content: .contentParts(systemPrompts)
+                    content: {
+                        if supportsMultipartMessageContent {
+                            return .contentParts(systemPrompts)
+                        }
+                        let textParts = systemPrompts.compactMap {
+                            if case let .text(text) = $0 { return text.text }
+                            return nil
+                        }
+
+                        return .text(textParts.joined(separator: "\n\n"))
+                    }()
                 ),
             ] + nonSystemMessages
 
             return
         }
-        
+
         // Default
-        
+
         messages = body.messages.map { message in
             .init(
                 role: {
@@ -840,11 +962,16 @@ extension OpenAIChatCompletionsService.RequestBody {
                         return .tool
                     }
                 }(),
-                content: .contentParts(Self.convertContentPart(
-                    content: message.content,
-                    images: supportsImage ? message.images : [],
-                    audios: supportsAudio ? message.audios : []
-                )),
+                content: {
+                    if supportsMultipartMessageContent {
+                        return .contentParts(Self.convertContentPart(
+                            content: message.content,
+                            images: supportsImage ? message.images : [],
+                            audios: supportsAudio ? message.audios : []
+                        ))
+                    }
+                    return .text(message.content)
+                }(),
                 name: message.name,
                 tool_calls: message.toolCalls?.map { tool in
                     MessageToolCall(

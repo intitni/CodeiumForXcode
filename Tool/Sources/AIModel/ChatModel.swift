@@ -23,6 +23,7 @@ public struct ChatModel: Codable, Equatable, Identifiable {
         case googleAI
         case ollama
         case claude
+        case gitHubCopilot
     }
 
     public struct Info: Codable, Equatable {
@@ -46,16 +47,26 @@ public struct ChatModel: Codable, Equatable, Identifiable {
                 self.projectID = projectID
             }
         }
-        
+
         public struct OpenAICompatibleInfo: Codable, Equatable {
             @FallbackDecoding<EmptyBool>
             public var enforceMessageOrder: Bool
+            @FallbackDecoding<EmptyTrue>
+            public var supportsMultipartMessageContent: Bool
+            @FallbackDecoding<EmptyBool>
+            public var requiresBeginWithUserMessage: Bool
 
-            public init(enforceMessageOrder: Bool = false) {
+            public init(
+                enforceMessageOrder: Bool = false,
+                supportsMultipartMessageContent: Bool = true,
+                requiresBeginWithUserMessage: Bool = false
+            ) {
                 self.enforceMessageOrder = enforceMessageOrder
+                self.supportsMultipartMessageContent = supportsMultipartMessageContent
+                self.requiresBeginWithUserMessage = requiresBeginWithUserMessage
             }
         }
-        
+
         public struct GoogleGenerativeAIInfo: Codable, Equatable {
             @FallbackDecoding<EmptyString>
             public var apiVersion: String
@@ -64,23 +75,31 @@ public struct ChatModel: Codable, Equatable, Identifiable {
                 self.apiVersion = apiVersion
             }
         }
-        
+
         public struct CustomHeaderInfo: Codable, Equatable {
             public struct HeaderField: Codable, Equatable {
                 public var key: String
                 public var value: String
-                
+
                 public init(key: String, value: String) {
                     self.key = key
                     self.value = value
                 }
             }
-            
+
             @FallbackDecoding<EmptyArray>
             public var headers: [HeaderField]
-            
+
             public init(headers: [HeaderField] = []) {
                 self.headers = headers
+            }
+        }
+        
+        public struct CustomBodyInfo: Codable, Equatable {
+            public var jsonBody: String
+            
+            public init(jsonBody: String = "") {
+                self.jsonBody = jsonBody
             }
         }
 
@@ -111,6 +130,8 @@ public struct ChatModel: Codable, Equatable, Identifiable {
         public var openAICompatibleInfo: OpenAICompatibleInfo
         @FallbackDecoding<EmptyChatModelCustomHeaderInfo>
         public var customHeaderInfo: CustomHeaderInfo
+        @FallbackDecoding<EmptyChatModelCustomBodyInfo>
+        public var customBodyInfo: CustomBodyInfo
 
         public init(
             apiKeyName: String = "",
@@ -125,7 +146,8 @@ public struct ChatModel: Codable, Equatable, Identifiable {
             ollamaInfo: OllamaInfo = OllamaInfo(),
             googleGenerativeAIInfo: GoogleGenerativeAIInfo = GoogleGenerativeAIInfo(),
             openAICompatibleInfo: OpenAICompatibleInfo = OpenAICompatibleInfo(),
-            customHeaderInfo: CustomHeaderInfo = CustomHeaderInfo()
+            customHeaderInfo: CustomHeaderInfo = CustomHeaderInfo(),
+            customBodyInfo: CustomBodyInfo = CustomBodyInfo()
         ) {
             self.apiKeyName = apiKeyName
             self.baseURL = baseURL
@@ -140,6 +162,7 @@ public struct ChatModel: Codable, Equatable, Identifiable {
             self.googleGenerativeAIInfo = googleGenerativeAIInfo
             self.openAICompatibleInfo = openAICompatibleInfo
             self.customHeaderInfo = customHeaderInfo
+            self.customBodyInfo = customBodyInfo
         }
     }
 
@@ -172,6 +195,8 @@ public struct ChatModel: Codable, Equatable, Identifiable {
             let baseURL = info.baseURL
             if baseURL.isEmpty { return "https://api.anthropic.com/v1/messages" }
             return "\(baseURL)/v1/messages"
+        case .gitHubCopilot:
+            return "https://api.githubcopilot.com/chat/completions"
         }
     }
 }
@@ -202,4 +227,12 @@ public struct EmptyChatModelOpenAICompatibleInfo: FallbackValueProvider {
 
 public struct EmptyChatModelCustomHeaderInfo: FallbackValueProvider {
     public static var defaultValue: ChatModel.Info.CustomHeaderInfo { .init() }
+}
+
+public struct EmptyChatModelCustomBodyInfo: FallbackValueProvider {
+    public static var defaultValue: ChatModel.Info.CustomBodyInfo { .init() }
+}
+
+public struct EmptyTrue: FallbackValueProvider {
+    public static var defaultValue: Bool { true }
 }
